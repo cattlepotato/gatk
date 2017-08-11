@@ -97,7 +97,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
-            final String outputAssembliesFile,
+            final String outputAssemblyAlignments,
             final Logger toolLogger) {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
@@ -141,9 +141,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
         cleanHeader.setSortOrder(params.assembliesSortOrder);
 
-        AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList,
-                params.assembliesSortOrder == SAMFileHeader.SortOrder.queryname);
-        log("Wrote SAM file of aligned contigs.", toolLogger);
+        if (null != outputAssemblyAlignments) {
+            AlignedAssemblyOrExcuse.writeSAMFile(outputAssemblyAlignments, cleanHeader, alignedAssemblyOrExcuseList,
+                    params.assembliesSortOrder == SAMFileHeader.SortOrder.queryname);
+            log("Wrote SAM file of aligned contigs.", toolLogger);
+        }
 
         return new Tuple2<>(alignedAssemblyOrExcuseList, intervalsAndQNameMap._2());
     }
