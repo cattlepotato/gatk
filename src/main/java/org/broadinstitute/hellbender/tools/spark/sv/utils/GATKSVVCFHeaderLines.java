@@ -93,8 +93,8 @@ public class GATKSVVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUPLICATION_NUMBERS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times the sequence is duplicated on reference and on the alternate alleles"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, 0, VCFHeaderLineType.Flag, "Whether the duplication annotations are from an experimental optimization procedure"));
 
-        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INVDUP_STRANDS, VCFHeaderLineCount.A, VCFHeaderLineType.String,
-                "Strands of the duplicated sequence on alt allele, one group for each alt allele (currently only available for inverted duplication variants)"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INVDUP_ORIENTATIONS, VCFHeaderLineCount.A, VCFHeaderLineType.String,
+                "OrientationsS of the duplicated sequence on alt allele relative to the copy on ref; one group for each alt allele (currently only available for inverted duplication variants)"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV_TRANS_INS_REF_SPAN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String,
                 "Reference span of mapping location of trans-located and inverted inserted sequence possible in inverted duplications"));
 

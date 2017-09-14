@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -270,29 +269,37 @@ public final class SvCigarUtils {
                         ") would walk out of the read, indicated by cigar " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
 
         int readBasesConsumed = 0;
+
+        // skip first several elements that give accumulated readBasesConsumed below startInclusiveOnRead
+        int idx = 0;
+        CigarElement currEle = cigarElements.get(idx);
+        while (readBasesConsumed + (currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0) < startInclusiveOnRead) {
+            readBasesConsumed += currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0;
+            currEle = cigarElements.get(++idx);
+        }
         int refWalkDist = 0;
+        int readWalked = 0;
+        while (idx != cigarElements.size()) {
+            currEle = cigarElements.get(idx);
+            final int skip = Math.max(0, startInclusiveOnRead - readBasesConsumed - 1);
+            final int effectiveLen = currEle.getLength() - skip;
 
-        for (final CigarElement ce : cigarElements) {
-
-            if (readBasesConsumed + (ce.getOperator().consumesReadBases() ? ce.getLength() : 0) < startInclusiveOnRead) {
-                readBasesConsumed += ce.getOperator().consumesReadBases() ? ce.getLength() : 0;
-            } else { // has started
-                if (!ce.getOperator().consumesReadBases()){ // e.g. 'D'
-                    refWalkDist += ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0;
-                } else if (readBasesConsumed + ce.getLength() < endInclusive) { // hasn't walked long enough
-                    readBasesConsumed += ce.getLength();
-                    refWalkDist += ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0;
-                } else { // read bases already consumed + the current walk that consumes read bases >= requested distance
-                    if (ce.getOperator().equals(CigarOperator.I) || ce.getOperator().equals(CigarOperator.S)) {
-                        break; // doesn't consume ref
-                    } else if (ce.getOperator().isAlignment()) {
-                        refWalkDist += endInclusive - readBasesConsumed;
-                        break;
-                    } else {
-                        throw new GATKException.ShouldNeverReachHereException("Logic error." );
-                    }
+            if (currEle.getOperator().consumesReadBases()) {
+                if (readWalked + effectiveLen < distanceOnRead) { // hasn't walked enough yet on read
+                    readWalked += effectiveLen;
+                    refWalkDist += currEle.getOperator().consumesReferenceBases() ? effectiveLen : 0;
+                    readBasesConsumed += currEle.getOperator().consumesReferenceBases() ? currEle.getLength() : 0;
+                } else { // would be walked enough on read
+                    refWalkDist += currEle.getOperator().consumesReferenceBases() ? distanceOnRead - readWalked : 0;
+                    readWalked = distanceOnRead;
+                    break;
                 }
+            } else {
+                refWalkDist += currEle.getOperator().consumesReferenceBases() ? effectiveLen : 0;
+                readBasesConsumed += currEle.getOperator().consumesReferenceBases() ? currEle.getLength() : 0;
             }
+
+            ++idx;
         }
 
         return refWalkDist;
@@ -318,34 +325,33 @@ public final class SvCigarUtils {
         Utils.validateArg(distOnRef > 0 && startInclusiveOnRead > 0,
                 "start position (" + startInclusiveOnRead + ") or distance (" + distOnRef + ") is non-positive.");
 
-        final List<CigarElement> immutableViewOnOriginalCigar = cigarAlong5To3DirOfRead.getCigarElements();
-        Utils.validateArg(immutableViewOnOriginalCigar.stream().noneMatch(ce -> ce.getOperator().isPadding() || ce.getOperator().equals(CigarOperator.N)),
+        final List<CigarElement> cigarElementsInOrderOfWalkingDir = (walkBackward ? CigarUtils.invertCigar(cigarAlong5To3DirOfRead): cigarAlong5To3DirOfRead).getCigarElements();
+        Utils.validateArg(cigarElementsInOrderOfWalkingDir.stream().noneMatch(ce -> ce.getOperator().isPadding() || ce.getOperator().equals(CigarOperator.N)),
                 "cigar contains padding, which is currently unsupported; cigar: " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
-        final int readUnlicpedLength = getUnclippedReadLength(cigarAlong5To3DirOfRead);
-        Utils.validateArg(readUnlicpedLength >= startInclusiveOnRead,
-                "given start location on read (" + startInclusiveOnRead + ") is higher than read unclipped length (" + readUnlicpedLength+ "), cigar: " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
-        final int totalRefLen = immutableViewOnOriginalCigar.stream().mapToInt(ce -> ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0).sum();
+        final int readUnclippedLength = getUnclippedReadLength(cigarAlong5To3DirOfRead);
+        Utils.validateArg(readUnclippedLength >= startInclusiveOnRead,
+                "given start location on read (" + startInclusiveOnRead + ") is higher than read unclipped length (" + readUnclippedLength+ "), cigar: " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
+        final int totalRefLen = cigarElementsInOrderOfWalkingDir.stream().mapToInt(ce -> ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0).sum();
         Utils.validateArg(totalRefLen >= distOnRef,
-                "given walking distance on reference (" + distOnRef + ") would is longer than the total number (" +
+                "given walking distance on reference (" + distOnRef + ") would be longer than the total number (" +
                         + totalRefLen + ") of reference bases spanned by the cigar, indicated by cigar " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
 
-        final int readLength = immutableViewOnOriginalCigar.stream().mapToInt(ce -> ce.getOperator().consumesReadBases() ? ce.getLength() : 0).sum();
-        final List<CigarElement> cigarElements = walkBackward ? Lists.reverse(immutableViewOnOriginalCigar) : immutableViewOnOriginalCigar;
+        final int readLength = cigarElementsInOrderOfWalkingDir.stream().mapToInt(ce -> ce.getOperator().consumesReadBases() ? ce.getLength() : 0).sum();
         final int effectiveReadStartInclusive = walkBackward ? readLength - startInclusiveOnRead + 1 : startInclusiveOnRead;
         // skip first several elements that give accumulated readBasesConsumed below startInclusiveOnRead
         int idx = 0;
         int readBasesConsumed = 0;
-        CigarElement currEle = cigarElements.get(idx);
+        CigarElement currEle = cigarElementsInOrderOfWalkingDir.get(idx);
         while (readBasesConsumed + (currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0) < effectiveReadStartInclusive) {
             readBasesConsumed += currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0;
-            currEle = cigarElements.get(++idx);
+            currEle = cigarElementsInOrderOfWalkingDir.get(++idx);
         }
 
         // when we reach here, we have skipped just enough read bases to start counting ref bases or, currEle would lead us to such state
         int readWalkDist = 0;
         int refWalked = 0;
-        while (idx != cigarElements.size()) {
-            currEle = cigarElements.get(idx);
+        while (idx != cigarElementsInOrderOfWalkingDir.size()) {
+            currEle = cigarElementsInOrderOfWalkingDir.get(idx);
             final int skip = Math.max(0, effectiveReadStartInclusive - readBasesConsumed - 1);
             final int effectiveLen = currEle.getLength() - skip;
 

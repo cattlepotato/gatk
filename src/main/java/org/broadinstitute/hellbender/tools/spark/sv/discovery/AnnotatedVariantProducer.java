@@ -153,7 +153,7 @@ public class AnnotatedVariantProducer implements Serializable {
             }
 
             if (breakpointComplications.getDupSeqStrandOnCtg() != null) {
-                attributeMap.put(GATKSVVCFConstants.INVDUP_STRANDS,
+                attributeMap.put(GATKSVVCFConstants.INVDUP_ORIENTATIONS,
                         breakpointComplications.getDupSeqStrandOnCtg().stream().map(Strand::toString).collect(Collectors.joining()));
             }
 

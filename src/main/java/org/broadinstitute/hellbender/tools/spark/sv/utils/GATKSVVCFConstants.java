@@ -32,7 +32,7 @@ public class GATKSVVCFConstants {
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSERTED_SEQUENCE_MAPPINGS";
     public static final String HOMOLOGY = "HOMOLOGY";
     public static final String HOMOLOGY_LENGTH = "HOMOLOGY_LENGTH";
-    public static final String ALT_HAPLOTYPE_SEQ = "ALT_HT_SEQ";
+    public static final String ALT_HAPLOTYPE_SEQ = "ALT_HAPLOTYPE_SEQ";
 
     // type specific: tandem duplication
     public static final String DUP_REPEAT_UNIT_REF_SPAN = "DUP_REPEAT_UNIT_REF_SPAN";
@@ -44,7 +44,7 @@ public class GATKSVVCFConstants {
     public static final String TANDUP_EXPANSION_STRING = "EXPANSION";
 
     // type specific: inverted duplication
-    public static final String INVDUP_STRANDS = "DUP_INV_STRANDS";
+    public static final String INVDUP_ORIENTATIONS = "DUP_INV_ORIENTATIONS";
     public static final String INV_TRANS_INS_REF_SPAN = "INV_TRANS_INS_REF_SPAN";
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column

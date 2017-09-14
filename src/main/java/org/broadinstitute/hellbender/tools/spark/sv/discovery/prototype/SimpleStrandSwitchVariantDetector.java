@@ -117,7 +117,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         }
         return new AlignmentInterval(result._1, newTigStart, newTigEnd, result._2, input.forwardStrand, input.mapQual,
                 StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.MISSING_NM,
-                input.alnScore, input.isFromSplitGapAlignment, input.hasUndergoneOverlapRemoval);
+                input.alnScore, input.alnModType);
     }
 
     /**

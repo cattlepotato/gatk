@@ -37,8 +37,8 @@ public final class BreakpointComplications {
     private static final List<String> DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG = new ArrayList<>(Collections.EMPTY_LIST);
 
     private static final List<Strand> DEFAULT_INV_DUP_REF_STRAND = Collections.singletonList(Strand.POSITIVE);
-    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDs_FR = Arrays.asList(Strand.POSITIVE, Strand.NEGATIVE);
-    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDs_RF = Arrays.asList(Strand.NEGATIVE, Strand.POSITIVE);
+    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDS_FR = Arrays.asList(Strand.POSITIVE, Strand.NEGATIVE);
+    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDS_RF = Arrays.asList(Strand.NEGATIVE, Strand.POSITIVE);
 
     /**
      * '+' strand representations of micro-homology, inserted sequence and duplicated sequence on the reference.
@@ -198,6 +198,11 @@ public final class BreakpointComplications {
         hasDuplicationAnnotation = false;
     }
 
+    /**
+     * Initialize the fields in this object, assuming the input chimeric alignment is induced by two alignments with
+     * "significant" (see {@link #isLikelyInvertedDuplication(AlignmentInterval, AlignmentInterval)})
+     * overlap on their reference spans.
+     */
     private void initForInvDup(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
 
         final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
@@ -217,8 +222,6 @@ public final class BreakpointComplications {
         final int jumpLandingRefLoc = secondAlignmentInterval.forwardStrand ? secondAlignmentInterval.referenceSpan.getStart()
                                                                             : secondAlignmentInterval.referenceSpan.getEnd();
 
-
-
         if (firstAlignmentInterval.forwardStrand) {
             final int alpha = firstAlignmentInterval.referenceSpan.getStart(),
                       omega = secondAlignmentInterval.referenceSpan.getStart();
@@ -228,7 +231,7 @@ public final class BreakpointComplications {
                 invertedTransInsertionRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                         Math.min(jumpStartRefLoc, jumpLandingRefLoc) + 1, Math.max(jumpStartRefLoc, jumpLandingRefLoc));
             }
-            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDs_FR;
+            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDS_FR;
         } else {
             final int alpha = firstAlignmentInterval.referenceSpan.getEnd(),
                       omega = secondAlignmentInterval.referenceSpan.getEnd();
@@ -238,13 +241,16 @@ public final class BreakpointComplications {
                 invertedTransInsertionRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                         Math.min(jumpStartRefLoc, jumpLandingRefLoc) + 1, Math.max(jumpStartRefLoc, jumpLandingRefLoc));
             }
-            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDs_RF;
+            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDS_RF;
         }
         cigarStringsForDupSeqOnCtg = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG; // not computing cigars because alt haplotypes will be extracted
 
         dupAnnotIsFromOptimization = false;
     }
 
+    /**
+     * Extract alt haplotype sequence, based on the input {@code chimericAlignment} and {@code contigSeq}.
+     */
     public byte[] extractAltHaplotypeForInvDup(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
 
         final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
