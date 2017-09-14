@@ -36,9 +36,9 @@ public final class BreakpointComplications {
     @SuppressWarnings("unchecked")
     private static final List<String> DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG = new ArrayList<>(Collections.EMPTY_LIST);
 
-    private static final List<Strand> DEFAULT_INV_DUP_REF_STRAND = Collections.singletonList(Strand.POSITIVE);
-    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDS_FR = Arrays.asList(Strand.POSITIVE, Strand.NEGATIVE);
-    private static final List<Strand> DEFAULT_INV_DUP_CTG_STRANDS_RF = Arrays.asList(Strand.NEGATIVE, Strand.POSITIVE);
+    private static final List<Strand> DEFAULT_INV_DUP_REF_ORIENTATION = Collections.singletonList(Strand.POSITIVE);
+    private static final List<Strand> DEFAULT_INV_DUP_CTG_ORIENTATIONS_FR = Arrays.asList(Strand.POSITIVE, Strand.NEGATIVE);
+    private static final List<Strand> DEFAULT_INV_DUP_CTG_ORIENTATIONS_RF = Arrays.asList(Strand.NEGATIVE, Strand.POSITIVE);
 
     /**
      * '+' strand representations of micro-homology, inserted sequence and duplicated sequence on the reference.
@@ -214,7 +214,7 @@ public final class BreakpointComplications {
 
         dupSeqRepeatNumOnRef = 1;
         dupSeqRepeatNumOnCtg = 2;
-        dupSeqStrandOnRef = DEFAULT_INV_DUP_REF_STRAND;
+        dupSeqStrandOnRef = DEFAULT_INV_DUP_REF_ORIENTATION;
 
         // jump start and jump landing locations
         final int jumpStartRefLoc = firstAlignmentInterval.forwardStrand ? firstAlignmentInterval.referenceSpan.getEnd()
@@ -231,7 +231,7 @@ public final class BreakpointComplications {
                 invertedTransInsertionRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                         Math.min(jumpStartRefLoc, jumpLandingRefLoc) + 1, Math.max(jumpStartRefLoc, jumpLandingRefLoc));
             }
-            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDS_FR;
+            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_ORIENTATIONS_FR;
         } else {
             final int alpha = firstAlignmentInterval.referenceSpan.getEnd(),
                       omega = secondAlignmentInterval.referenceSpan.getEnd();
@@ -241,7 +241,7 @@ public final class BreakpointComplications {
                 invertedTransInsertionRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                         Math.min(jumpStartRefLoc, jumpLandingRefLoc) + 1, Math.max(jumpStartRefLoc, jumpLandingRefLoc));
             }
-            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_STRANDS_RF;
+            dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_ORIENTATIONS_RF;
         }
         cigarStringsForDupSeqOnCtg = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG; // not computing cigars because alt haplotypes will be extracted
 
