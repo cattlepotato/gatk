@@ -15,8 +15,10 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import java.util.List;
  */
 @CommandLineProgramProperties(summary="Tool to selectMappedContigs alignments of long reads possibly pointing to pathogen integration site.",
         oneLineSummary="Tool to selectMappedContigs alignments of long reads possibly pointing to pathogen integration site.",
+        usageExample = "gatk-launch ExtractSuspectedPathogenAlignmentsSpark -I PATH_TO_ASSEMBLY_ALN.sam -O OUTPUT.sam -R PATH_TO_REF -uci 150",
         omitFromCommandLine = true,
         programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
@@ -58,21 +61,23 @@ public class ExtractSuspectedPathogenAlignmentsSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
 
         final JavaRDD<GATKRead> rawAlignments = getUnfilteredReads();
-        final JavaRDD<GATKRead> unmappedReads = rawAlignments.filter(GATKRead::isUnmapped);
+        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> unmappedAndMapped = RDDUtils.split(rawAlignments, GATKRead::isUnmapped, true);
+        final JavaRDD<GATKRead> unmappedReads = unmappedAndMapped._1;
+        localLogger.info("Found " + unmappedReads.count() + " unmapped contigs.");
 
-        final JavaRDD<AlignedContig> selectedMappedContigs = selectMappedContigs(rawAlignments, uncoveredClipLength, getHeaderForReads(), localLogger);
+        final JavaRDD<AlignedContig> selectedMappedContigs = selectMappedContigs(unmappedAndMapped._2, uncoveredClipLength, getHeaderForReads(), localLogger);
         final HashSet<String> readNames = new HashSet<>(selectedMappedContigs.map(tig -> tig.contigName).distinct().collect());
+        localLogger.info("Found " + readNames.size() + " mapped contigs suggesting pathogen injection sites");
 
-        writeReads(ctx, outputAssemblyAlignments,
-                rawAlignments.filter(r -> readNames.contains(r.getName())).union(unmappedReads));
+        writeReads(ctx, outputAssemblyAlignments, rawAlignments.filter(r -> readNames.contains(r.getName())).union(unmappedReads));
     }
 
-    static JavaRDD<AlignedContig> selectMappedContigs(final JavaRDD<GATKRead> rawAlignments, final int coverageThresholdInclusive,
+    static JavaRDD<AlignedContig> selectMappedContigs(final JavaRDD<GATKRead> mappedReads, final int coverageThresholdInclusive,
                                                       final SAMFileHeader header, final Logger toolLogger) {
 
         return
                 new DiscoverVariantsFromContigAlignmentsSAMSpark
-                        .SAMFormattedContigAlignmentParser(rawAlignments.filter(r -> !r.isUnmapped()), header, true, toolLogger)
+                        .SAMFormattedContigAlignmentParser(mappedReads, header, true, toolLogger)
                         .getAlignedContigs()
                         .filter(ctg -> keepContigForPathSeqUse(ctg, coverageThresholdInclusive))
                         .cache();
@@ -83,8 +88,9 @@ public class ExtractSuspectedPathogenAlignmentsSpark extends GATKSparkTool {
      *   1) alignments covering less than or equal to only half of the contig sequence,
      *   2) a certain length of its sequence uncovered by alignments
      */
-    private static boolean keepContigForPathSeqUse(final AlignedContig contig,
-                                                   final int coverageThresholdInclusive) {
+    @VisibleForTesting
+    static boolean keepContigForPathSeqUse(final AlignedContig contig,
+                                           final int coverageThresholdInclusive) {
 
         final int alignmentCoverage = alignmentsCoverage(contig);
 
@@ -111,7 +117,7 @@ public class ExtractSuspectedPathogenAlignmentsSpark extends GATKSparkTool {
 
             if (nextSVI.overlaps(currentSVI)) {
                 currentSVI = new SVInterval(1, Math.min(currentSVI.getStart(), nextSVI.getStart()),
-                        Math.max(currentSVI.getEnd(), nextSVI.getEnd())     );
+                                                      Math.max(currentSVI.getEnd(), nextSVI.getEnd()));
             } else {
                 maximallyExtendedCovers.add(currentSVI);
                 currentSVI = nextSVI;
