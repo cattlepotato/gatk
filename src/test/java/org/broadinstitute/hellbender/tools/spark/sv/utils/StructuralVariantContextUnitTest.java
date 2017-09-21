@@ -33,11 +33,12 @@ import java.util.stream.Collectors;
 /**
  * Unit tests for {@link StructuralVariantContext}.
  */
-public class StructuralVariantContextUnitTest {
+public class StructuralVariantContextUnitTest extends BaseTest {
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/spark/sv/utils/";
 
-    private static final File VALID_VARIANTS_FILE = new File(BaseTest.largeFileTestDir, "svc_test.vcf.gz");
+    private static final File VALID_VARIANTS_FILE = new File(TEST_SUB_DIR, "SVContext.vcf.gz");
 
-    private static final File REFERENCE_FILE = new File(CommandLineProgramTest.b38_reference_20_21);
+    private static final File REFERENCE_FILE = new File(b38_reference_20_21);
 
     /**
      * Tests {@link StructuralVariantContext#create}.

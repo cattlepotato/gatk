@@ -80,30 +80,30 @@ public class SVTypeUnitTest {
 
         // simple tandem dup contraction from 2 units to 1 unit
         worker(SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -10,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // simple tandem dup expansion from 1 unit to 2 units
         worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 10,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
         worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 99,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         worker(SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 96,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
         worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -96,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // tandem dup contraction from 3 units to 2 units
         worker(SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -96,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // tandem dup expansion from 2 units to 3 units
         worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 96,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
     }
 }

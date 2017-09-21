@@ -120,7 +120,6 @@ public final class SvCigarUtils {
      *     <li>there must be at least one alignment operation in the list;</li>
      *     <li>deletion operation cannot neighbor clipping operations;</li>
      * </ul>
-     * @param cigarElements
      */
     @VisibleForTesting
     public static void validateCigar(final List<CigarElement> cigarElements) {

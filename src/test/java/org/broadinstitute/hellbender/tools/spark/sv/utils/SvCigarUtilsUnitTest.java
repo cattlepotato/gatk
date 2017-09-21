@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 
-public class SvCigarUtilsUnitTest {
+public class SvCigarUtilsUnitTest extends BaseTest {
 
     @Test(groups = "sv")
     public void testClippingArithmetic() {
