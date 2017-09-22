@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 // TODO: 7/24/17 the structure of this file is resembling that of {@link GATKVCFHeaderLines}, should we move this there?
-public class GATKSVVCFHeaderLines {
+public final class GATKSVVCFHeaderLines {
 
     public static VCFInfoHeaderLine getInfoLine(final String id) { return infoLines.get(id); }
     public static Set<VCFInfoHeaderLine> getInfoLines() { return new HashSet<>(infoLines.values()); }
@@ -48,20 +48,20 @@ public class GATKSVVCFHeaderLines {
         symbAltAlleleLines.put(line.getID(), line);
     }
 
-    public static Map<String, VCFHeaderLine> vcfHeaderLines = new LinkedHashMap<>();
-
     static {
 
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER, "Inversion of reference sequence"));
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_INV, "Inversion of reference sequence"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, "Deletion relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, "Deletion relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER, "Insertion of novel sequence relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_INS, "Insertion of novel sequence relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, "Region of elevated copy number relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, "Region of elevated copy number relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP_IN_HEADER, "Region of elevated copy number relative to the reference, with some copies inverted"));
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP, "Region of elevated copy number relative to the reference, with some copies inverted"));
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.BREAKEND_STR, "Breakpoint of a variant of undetermined type"));
 
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BND_MATEID_STR, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "ID(s) for mate(s) of a BND record")); // technically there could be multiple mates, but currently we only have case for 1 mate
 

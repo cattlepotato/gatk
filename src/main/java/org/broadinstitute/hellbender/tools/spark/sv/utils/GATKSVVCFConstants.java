@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-public class GATKSVVCFConstants {
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
     // VCF standard keys reserved for sv
@@ -11,11 +15,11 @@ public class GATKSVVCFConstants {
     public static final String BND_MATEID_STR = "MATEID";
 
     // symbolic alt alleles
-    public static final String SYMB_ALT_ALLELE_INV_IN_HEADER = "INV";
-    public static final String SYMB_ALT_ALLELE_DEL_IN_HEADER = "DEL";
-    public static final String SYMB_ALT_ALLELE_INS_IN_HEADER = "INS";
-    public static final String SYMB_ALT_ALLELE_DUP_IN_HEADER = "DUP";
-    public static final String SYMB_ALT_ALLELE_INVDUP_IN_HEADER = "DUP:INV";
+    public static final String SYMB_ALT_ALLELE_INV = "INV";
+    public static final String SYMB_ALT_ALLELE_DEL = "DEL";
+    public static final String SYMB_ALT_ALLELE_INS = "INS";
+    public static final String SYMB_ALT_ALLELE_DUP = "DUP";
+    public static final String SYMB_ALT_ALLELE_INVDUP = "DUP:INV";
 
     // GATK-SV specific header lines
     // applicable to all precise records all the time
@@ -54,4 +58,11 @@ public class GATKSVVCFConstants {
     public static final String DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING = "DEL-DUPLICATION-TANDEM-CONTRACTION";
     public static final String DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
     public static final String DUP_INV_INTERNAL_ID_START_STRING = "INS-DUPLICATION-INVERTED-EXPANSION";
+
+    public static final List<String> expectedHeaderLinesInVCF
+            = Stream.of("SVTYPE", "SVLEN", "BND", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV", "CTG_NAMES",
+                    "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH", "SEQ_ALT_HAPLOTYPE",
+                    "INSSEQ", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN", "DUP_SEQ_CIGARS", "DUP_NUM",
+                    "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_INV_ORIENTATIONS", "INV33", "INV55")
+                    .sorted().collect(Collectors.toList());;
 }

@@ -28,7 +28,7 @@ public abstract class SimpleSVType extends SvType {
 
         Inversion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV)),
                     novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd(),
                     Collections.singletonMap((novelAdjacencyReferenceLocations.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE) ? GATKSVVCFConstants.INV55 : GATKSVVCFConstants.INV33, ""));
         }
@@ -54,7 +54,7 @@ public abstract class SimpleSVType extends SvType {
         @SuppressWarnings("unchecked")
         Deletion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL)),
                     -(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd()),
                     novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation() ? Collections.singletonMap(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, "") : Collections.EMPTY_MAP);
         }
@@ -79,7 +79,7 @@ public abstract class SimpleSVType extends SvType {
         @SuppressWarnings("unchecked")
         Insertion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS)),
                     novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length(),
                     Collections.EMPTY_MAP);
         }
@@ -102,7 +102,7 @@ public abstract class SimpleSVType extends SvType {
 
         DuplicationTandem(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP)),
                     novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length()
                             + (novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnCtg() - novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnRef())*novelAdjacencyReferenceLocations.complication.getDupSeqRepeatUnitRefSpan().size(),
                     Collections.singletonMap(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, ""));
@@ -127,7 +127,7 @@ public abstract class SimpleSVType extends SvType {
         @SuppressWarnings("unchecked")
         public DuplicationInverted(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP_IN_HEADER)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP)),
                     novelAdjacencyReferenceLocations.complication.getDupSeqRepeatUnitRefSpan().size(),
                     Collections.EMPTY_MAP);
         }

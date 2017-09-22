@@ -1,4 +1,5 @@
 ##fileformat=VCFv4.2
+##ALT=<ID=BND,Description="Breakpoint of a variant of undetermined type">
 ##ALT=<ID=DEL,Description="Deletion relative to the reference">
 ##ALT=<ID=DUP,Description="Region of elevated copy number relative to the reference">
 ##ALT=<ID=DUP:INV,Description="Region of elevated copy number relative to the reference, with some copies inverted">
