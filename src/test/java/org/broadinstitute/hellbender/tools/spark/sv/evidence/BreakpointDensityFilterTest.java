@@ -66,7 +66,7 @@ public class BreakpointDensityFilterTest extends BaseTest {
     }
 
 
-    @Test(dataProvider = "simpleEvidenceClusters")
+    @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClusters(final List<BreakpointEvidence> evidenceList) {
 
         BreakpointDensityFilter breakpointDensityFilter =
@@ -88,7 +88,7 @@ public class BreakpointDensityFilterTest extends BaseTest {
         Assert.assertFalse(breakpointDensityFilter.hasNext());
     }
 
-    @Test(dataProvider = "simpleEvidenceClusters")
+    @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClustersWithCoherentEvidence(final List<BreakpointEvidence> evidenceList) {
 
         BreakpointDensityFilter breakpointDensityFilter =

@@ -44,7 +44,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#create}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts")
+    @Test(dataProvider="validVariantContexts", groups = "sv")
     public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         Assert.assertNotNull(svc);
@@ -54,7 +54,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#getStructuralVariantLength()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final int length = svc.getStructuralVariantLength();
@@ -69,7 +69,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#getStructuralVariantType()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
@@ -83,7 +83,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#getInsertedSequence()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final byte[] actual = svc.getInsertedSequence();
@@ -94,7 +94,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#getEnd()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
@@ -105,7 +105,7 @@ public class StructuralVariantContextUnitTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final int paddingSize = 10;
@@ -123,7 +123,7 @@ public class StructuralVariantContextUnitTest {
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
@@ -157,7 +157,7 @@ public class StructuralVariantContextUnitTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         testGetBreakPoints(vc, reference, 0);
         testGetBreakPoints(vc, reference, 10);
@@ -188,7 +188,7 @@ public class StructuralVariantContextUnitTest {
      * Tests {@link StructuralVariantContext#getSupportingContigIds()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final List<String> actual = svc.getSupportingContigIds();
@@ -196,7 +196,7 @@ public class StructuralVariantContextUnitTest {
         Assert.assertEquals(actual, expected);
     }
 
-    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
         testCreate(vc, reference);
         testLength(vc, reference);

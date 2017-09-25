@@ -17,7 +17,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVTyp
 
 public class SVVCFWriterUnitTest extends BaseTest{
 
-    @Test
+    @Test(groups = "sv")
     public void testSortVariantsByCoordinate(){
 
         final String insOne = "AAA";new String(SVDiscoveryTestDataProvider.makeDummySequence(100, (byte)'A'));

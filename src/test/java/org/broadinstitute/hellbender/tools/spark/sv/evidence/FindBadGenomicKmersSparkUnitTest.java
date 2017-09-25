@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
@@ -26,7 +27,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
     private static final int KMER_SIZE = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
     private static final String REFERENCE_FILE_NAME = hg19MiniReference;
 
-    @Test(groups = "spark")
+    @Test(groups = "sv")
     public void badKmersTest() throws IOException {
 
         final byte[] polyA = new byte[KMER_SIZE]; Arrays.fill(polyA, (byte)'A');
@@ -55,7 +56,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         Assert.assertEquals(badKmers.get(0), SVKmerizer.toKmer(polyA,new SVKmerLong()));
     }
 
-    @Test(groups = "spark")
+    @Test(groups = "sv")
     public void miniRefTest() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final ReferenceMultiSource ref = new ReferenceMultiSource((PipelineOptions)null,
@@ -71,14 +72,10 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
             SVKmerizer.canonicalStream(bases, KMER_SIZE, new SVKmerLong())
                     .forEach(kmer -> kmerMap.put(kmer, kmerMap.getOrDefault(kmer, 0L) + 1));
         }
-        final Iterator<Map.Entry<SVKmer, Long>> kmerIterator = kmerMap.entrySet().iterator();
-        while ( kmerIterator.hasNext() ) {
-            if ( kmerIterator.next().getValue() <= FindBadGenomicKmersSpark.MAX_KMER_FREQ )
-                kmerIterator.remove();
-        }
+        kmerMap.entrySet().removeIf( x -> x.getValue() <= FindBadGenomicKmersSpark.MAX_KMER_FREQ);
 
         final List<SVKmer> badKmers =
-                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, KMER_SIZE, Integer.MAX_VALUE, ref, null, null);
+                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, KMER_SIZE, Integer.MAX_VALUE, ref, null);
         final Set<SVKmer> badKmerSet = new HashSet<>(badKmers);
         Assert.assertEquals(badKmers.size(), badKmerSet.size());
         Assert.assertEquals(badKmerSet, kmerMap.keySet());

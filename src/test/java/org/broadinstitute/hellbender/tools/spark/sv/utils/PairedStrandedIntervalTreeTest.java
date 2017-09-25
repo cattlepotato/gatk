@@ -8,7 +8,7 @@ import java.util.Iterator;
 
 public class PairedStrandedIntervalTreeTest {
 
-    @Test
+    @Test(groups = "sv")
     public void testOverlappers() throws Exception {
         PairedStrandedIntervalTree<Integer> psiTree = new PairedStrandedIntervalTree<>();
 
@@ -81,7 +81,7 @@ public class PairedStrandedIntervalTreeTest {
 
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testIterator() throws Exception {
         PairedStrandedIntervalTree<Integer> psiTree = new PairedStrandedIntervalTree<>();
 
@@ -114,7 +114,7 @@ public class PairedStrandedIntervalTreeTest {
 
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testIteratorRemove() throws Exception {
         final PairedStrandedIntervalTree<Integer> psiTree = new PairedStrandedIntervalTree<>();
 
@@ -164,7 +164,7 @@ public class PairedStrandedIntervalTreeTest {
     }
 
 
-    @Test
+    @Test(groups = "sv")
     public void testContains() throws Exception {
         PairedStrandedIntervals query =
                 new PairedStrandedIntervals(

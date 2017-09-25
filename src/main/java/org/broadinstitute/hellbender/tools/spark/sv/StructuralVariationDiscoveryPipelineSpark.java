@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVReferenceUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -137,7 +138,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                                                    final Logger toolLogger) {
 
             final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-            final List<String> refNames = AlignedAssemblyOrExcuse.getRefNames(header);
+            final List<String> refNames = SVReferenceUtils.getRefNames(header);
 
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)

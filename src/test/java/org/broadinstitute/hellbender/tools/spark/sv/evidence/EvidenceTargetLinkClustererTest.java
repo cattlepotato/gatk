@@ -77,7 +77,7 @@ public class EvidenceTargetLinkClustererTest {
     }
 
 
-    @Test(dataProvider = "evidence")
+    @Test(dataProvider = "evidence", groups = "sv")
     public void testClusterEvidence(Iterator<BreakpointEvidence> evidenceIterator, Iterator<EvidenceTargetLink> expectedResults) throws Exception {
         EvidenceTargetLinkClusterer clusterer = new EvidenceTargetLinkClusterer(readMetadata, 0);
         final Iterator<EvidenceTargetLink> results = clusterer.cluster(evidenceIterator);

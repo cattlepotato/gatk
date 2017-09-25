@@ -1,10 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -20,12 +15,8 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVDUSTFilteredKmerizer;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import scala.Tuple2;
 
@@ -35,7 +26,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 /**
  * SparkTool to identify 63-mers in the reference that occur more than 3 times.
@@ -76,27 +66,24 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         final SAMFileHeader hdr = getHeaderForReads();
         SAMSequenceDictionary dict = null;
         if ( hdr != null ) dict = hdr.getSequenceDictionary();
-        final PipelineOptions options = getAuthenticatedGCSOptions();
         final ReferenceMultiSource referenceMultiSource = getReference();
-        Collection<SVKmer> killList = findBadGenomicKmers(ctx, kSize, maxDUSTScore, referenceMultiSource, options, dict);
+        Collection<SVKmer> killList = findBadGenomicKmers(ctx, kSize, maxDUSTScore, referenceMultiSource, dict);
         if ( highCopyFastaFilename != null ) {
-            killList = uniquify(killList, processFasta(kSize, maxDUSTScore, highCopyFastaFilename, options));
+            killList = SVUtils.uniquify(killList, processFasta(kSize, maxDUSTScore, highCopyFastaFilename));
         }
 
-        SVUtils.writeKmersFile(kSize, outputFile, killList);
+        SVFileUtils.writeKmersFile(kSize, outputFile, killList);
     }
 
     /** Find high copy number kmers in the reference sequence */
-    @VisibleForTesting
-    static List<SVKmer> findBadGenomicKmers( final JavaSparkContext ctx,
-                                                    final int kSize,
-                                                    final int maxDUSTScore,
-                                                    final ReferenceMultiSource ref,
-                                                    final PipelineOptions options,
-                                                    final SAMSequenceDictionary readsDict ) {
+    @VisibleForTesting static List<SVKmer> findBadGenomicKmers( final JavaSparkContext ctx,
+                                                                final int kSize,
+                                                                final int maxDUSTScore,
+                                                                final ReferenceMultiSource ref,
+                                                                final SAMSequenceDictionary readsDict ) {
         // Generate reference sequence RDD.
-        final JavaRDD<byte[]> refRDD = SVUtils.getRefRDD(ctx, kSize, ref, options, readsDict,
-                                                                REF_RECORD_LEN, REF_RECORDS_PER_PARTITION);
+        final JavaRDD<byte[]> refRDD = SVReferenceUtils.getRefRDD(ctx, kSize, ref, readsDict,
+                                                                  SVReferenceUtils.REF_RECORD_LEN, SVReferenceUtils.REF_RECORDS_PER_PARTITION);
 
         // Find the high copy number kmers
         return processRefRDD(kSize, maxDUSTScore, MAX_KMER_FREQ, refRDD);
@@ -112,15 +99,13 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                                                           final int maxKmerFreq,
                                                           final JavaRDD<byte[]> refRDD ) {
         final int nPartitions = refRDD.getNumPartitions();
-        final int hashSize = 2*REF_RECORDS_PER_PARTITION;
-        final int arrayCap = REF_RECORDS_PER_PARTITION/100;
+        final int hashSize = 2*SVReferenceUtils.REF_RECORDS_PER_PARTITION;
         return refRDD
                 .mapPartitions(seqItr -> {
                     final HopscotchMap<SVKmer, Integer, KmerAndCount> kmerCounts = new HopscotchMap<>(hashSize);
                     while ( seqItr.hasNext() ) {
                         final byte[] seq = seqItr.next();
-                        SVDUSTFilteredKmerizer.stream(seq, kSize, maxDUSTScore, new SVKmerLong())
-                                .map(kmer -> kmer.canonical(kSize))
+                        SVDUSTFilteredKmerizer.canonicalStream(seq, kSize, maxDUSTScore, new SVKmerLong())
                                 .forEach(kmer -> {
                                     final KmerAndCount entry = kmerCounts.find(kmer);
                                     if ( entry == null ) kmerCounts.add(new KmerAndCount((SVKmerLong)kmer));
@@ -142,19 +127,16 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                         if ( entry == null ) kmerCounts.add(new KmerAndCount((SVKmerLong)kmer, count));
                         else entry.bumpCount(count);
                     }
-                    final List<SVKmer> highFreqKmers = new ArrayList<>(arrayCap);
-                    for ( KmerAndCount kmerAndCount : kmerCounts ) {
-                        if ( kmerAndCount.grabCount() > maxKmerFreq ) highFreqKmers.add(kmerAndCount.getKey());
-                    }
-                    return highFreqKmers.iterator();
+                    return kmerCounts.stream()
+                            .filter(kmerAndCount -> kmerAndCount.grabCount() > maxKmerFreq)
+                            .map(KmerAndCount::getKey).iterator();
                 })
                 .collect();
     }
 
     @VisibleForTesting static List<SVKmer> processFasta( final int kSize,
                                                          final int maxDUSTScore,
-                                                         final String fastaFilename,
-                                                         final PipelineOptions options ) {
+                                                         final String fastaFilename) {
         try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fastaFilename))) ) {
             final List<SVKmer> kmers = new ArrayList<>((int) BucketUtils.fileSize(fastaFilename));
             String line;
@@ -163,26 +145,17 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
             while ( (line = rdr.readLine()) != null ) {
                 if ( line.charAt(0) != '>' ) sb.append(line);
                 else if ( sb.length() > 0 ) {
-                    SVDUSTFilteredKmerizer.stream(sb,kSize,maxDUSTScore,kmerSeed)
-                            .map(kmer -> kmer.canonical(kSize)).forEach(kmers::add);
+                    SVDUSTFilteredKmerizer.canonicalStream(sb,kSize,maxDUSTScore,kmerSeed).forEach(kmers::add);
                     sb.setLength(0);
                 }
             }
             if ( sb.length() > 0 ) {
-                SVDUSTFilteredKmerizer.stream(sb,kSize,maxDUSTScore,kmerSeed)
-                        .map(kmer -> kmer.canonical(kSize)).forEach(kmers::add);
+                SVDUSTFilteredKmerizer.canonicalStream(sb,kSize,maxDUSTScore,kmerSeed).forEach(kmers::add);
             }
             return kmers;
         }
         catch ( IOException ioe ) {
             throw new GATKException("Can't read high copy kmers fasta file "+fastaFilename, ioe);
         }
-    }
-
-    private static Collection<SVKmer> uniquify(final Collection<SVKmer> coll1, final Collection<SVKmer> coll2 ) {
-        final HopscotchSet<SVKmer> kmers = new HopscotchSet<>(coll1.size() + coll2.size());
-        kmers.addAll(coll1);
-        kmers.addAll(coll2);
-        return kmers;
     }
 }
