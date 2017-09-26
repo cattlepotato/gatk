@@ -21,10 +21,12 @@
 ##INFO=<ID=INV55,Number=0,Type=Flag,Description="Whether the event represents a 5' to 3' inversion">
 ##INFO=<ID=MAPPING_QUALITIES,Number=.,Type=Integer,Description="Mapping qualities of the contig alignments that support the variant">
 ##INFO=<ID=MAX_ALIGN_LENGTH,Number=1,Type=Integer,Description="Maximum of the minimum aligned lengths of flanking regions from each contig alignment">
+##INFO=<ID=READ_PAIR_SUPPORT,Number=1,Type=Integer,Description="Number of discordant read pairs supporting the variant">
+##INFO=<ID=SPLIT_READ_SUPPORT,Number=1,Type=Integer,Description="Number of split read supplementary mappings supporting the variant">
 ##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
 ##INFO=<ID=TOTAL_MAPPINGS,Number=1,Type=Integer,Description="Number of contig alignments that support the variant">
 ##contig=<ID=20,length=63025520>
 ##contig=<ID=21,length=48129895>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-21	43350116	DEL_21_43350116_43353485	G	<DEL>	.	.	ALIGN_LENGTHS=200,200;CTG_NAMES=asm000000:tig00008,asm000001:tig00002;END=43353485;HOMOLOGY=GAGGAA;HOMOLOGY_LENGTH=6;HQ_MAPPINGS=2;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=200;SVLEN=-3369;SVTYPE=DEL;TOTAL_MAPPINGS=2
+21	43350116	DEL_21_43350116_43353485	G	<DEL>	.	.	ALIGN_LENGTHS=200,200;CTG_NAMES=asm000000:tig00008,asm000001:tig00002;END=43353485;HOMOLOGY=GAGGAA;HOMOLOGY_LENGTH=6;HQ_MAPPINGS=2;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=200;READ_PAIR_SUPPORT=25;SPLIT_READ_SUPPORT=8;SVLEN=-3369;SVTYPE=DEL;TOTAL_MAPPINGS=2

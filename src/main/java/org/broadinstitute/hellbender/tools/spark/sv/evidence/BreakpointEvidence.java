@@ -630,7 +630,8 @@ public class BreakpointEvidence {
 
         @Override
         public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
-            return getFragmentOrdinal() == TemplateFragmentOrdinal.PAIRED_FIRST && isTargetHighQuality(readMetadata, minEvidenceMapq);
+            return getLocation().isUpstreamOf(target)
+                    && isTargetHighQuality(readMetadata, minEvidenceMapq);
         }
 
         private boolean isTargetHighQuality(final ReadMetadata readMetadata, final int minEvidenceMapq) {

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -278,8 +279,10 @@ public final class SVContext extends VariantContext {
         } else if (type == StructuralVariantType.DEL) {
             final int end = getEnd();
             return Arrays.asList(
-                    composePaddedInterval(contigName, contigLength, start, start, padding),
-                    composePaddedInterval(contigName, contigLength, end, end, padding));
+                    composePaddedInterval(contigName, contigLength, start + 1,
+                            start + 1 + + getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0), padding),
+                    composePaddedInterval(contigName, contigLength, end,
+                            end + getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0), padding));
         } else {
             // Please, add more types as needed!
             throw new UnsupportedOperationException("currently only supported for INS and DELs");
@@ -292,5 +295,27 @@ public final class SVContext extends VariantContext {
                 Math.max(1, padding > 0 ? start - padding + 1 : start),
                 Math.min(contigSize, end + padding));
 
+    }
+
+    public PairedStrandedIntervals getPairedStrandedIntervals(final SAMSequenceDictionary samSequenceDictionary) {
+        final StructuralVariantType type = getStructuralVariantType();
+        if (type == StructuralVariantType.DEL) {
+            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(0, samSequenceDictionary);
+            final SimpleInterval leftBreakpointSimpleInterval = breakPointIntervals.get(0);
+            final SVInterval leftBreakpointInterval = new SVInterval(
+                    samSequenceDictionary.getSequenceIndex(leftBreakpointSimpleInterval.getContig()),
+                    leftBreakpointSimpleInterval.getStart(),
+                    leftBreakpointSimpleInterval.getEnd() + 1);
+            final SimpleInterval rightBreakpointSimpleInterval = breakPointIntervals.get(1);
+            final SVInterval rightBreakpointInterval = new SVInterval(
+                    samSequenceDictionary.getSequenceIndex(rightBreakpointSimpleInterval.getContig()),
+                    rightBreakpointSimpleInterval.getStart(),
+                    rightBreakpointSimpleInterval.getEnd() + 1);
+
+            return new PairedStrandedIntervals(new StrandedInterval(leftBreakpointInterval, true),
+                    new StrandedInterval(rightBreakpointInterval, false));
+        } else {
+            throw new UnsupportedOperationException("currently only supported for DELs");
+        }
     }
 }

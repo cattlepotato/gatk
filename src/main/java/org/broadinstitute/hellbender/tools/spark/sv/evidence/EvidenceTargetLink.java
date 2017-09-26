@@ -72,21 +72,29 @@ public final class EvidenceTargetLink {
 
     public String toBedpeString(ReadMetadata readMetadata) {
         final SVInterval sourceInterval = source.getInterval();
-        final SVInterval targetInterval = source.getInterval();
+        final SVInterval targetInterval = target.getInterval();
         return readMetadata.getContigName(sourceInterval.getContig()) + "\t" + (sourceInterval.getStart() - 1) + "\t" + sourceInterval.getEnd() +
                 "\t" + readMetadata.getContigName(targetInterval.getContig()) + "\t" + (targetInterval.getStart() - 1) + "\t" + targetInterval.getEnd() +
                 "\t"  + getId(readMetadata) + "\t" +
-                (readPairs + splitReads) + "\t" + (source.getStrand() ? "+" : "-") + "\t" + (source.getStrand() ? "+" : "-")
+                (readPairs + splitReads) + "\t" + (source.getStrand() ? "+" : "-") + "\t" + (target.getStrand() ? "+" : "-")
                 + "\t" + "SR:" + Utils.join(",", splitReadTemplateNames) + "\t" + "RP:" + Utils.join(",", readPairTemplateNames);
     }
 
     private String getId(final ReadMetadata readMetadata) {
         final SVInterval sourceInterval = source.getInterval();
-        final SVInterval targetInterval = source.getInterval();
+        final SVInterval targetInterval = target.getInterval();
 
         return readMetadata.getContigName(sourceInterval.getContig()) + "_" + (sourceInterval.getStart() - 1) + "_" + sourceInterval.getEnd() +
                 "_" + readMetadata.getContigName(targetInterval.getContig()) + "_" + (targetInterval.getStart() - 1) + "_" + targetInterval.getEnd() +
                 "_" + (source.getStrand() ? "P" : "M")  + (target.getStrand() ? "P" : "M") + "_" + splitReads + "_" + readPairs;
+    }
+
+    public int getSplitReads() {
+        return splitReads;
+    }
+
+    public int getReadPairs() {
+        return readPairs;
     }
 
     public PairedStrandedIntervals getPairedStrandedIntervals() {

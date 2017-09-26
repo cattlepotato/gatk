@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -24,8 +26,8 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -66,6 +68,10 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String vcfOutputFileName;
 
+    private static boolean isImpreciseDeletion(Tuple2<PairedStrandedIntervals, EvidenceTargetLink> e) {
+        return e._1.getLeft().getInterval().getContig() == e._2().getPairedStrandedIntervals().getRight().getInterval().getContig() && e._1.getLeft().getStrand() && !e._1.getRight().getStrand();
+    }
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -84,12 +90,19 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        final SAMFileHeader headerForReads = getHeaderForReads();
+
         final JavaRDD<AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), true, localLogger)
+                = new SAMFormattedContigAlignmentParser(getReads(), headerForReads, true, localLogger)
                 .getAlignedContigs();
 
-        discoverVariantsAndWriteVCF(parsedContigAlignments, discoverStageArgs.fastaReference,
-                ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutputFileName, localLogger);
+        discoverVariantsAndWriteVCF(parsedContigAlignments,
+                discoverStageArgs.fastaReference,
+                ctx.broadcast(getReference()),
+                vcfOutputFileName,
+                localLogger,
+                null,
+                headerForReads.getSequenceDictionary());
     }
 
     public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
@@ -168,20 +181,94 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      */
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
                                                    final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final PipelineOptions pipelineOptions, final String vcfFileName,
-                                                   final Logger toolLogger) {
+                                                   final String vcfOutputFileName,
+                                                   final Logger localLogger,
+                                                   final SAMSequenceDictionary samSequenceDictionary) {
+        discoverVariantsAndWriteVCF(alignedContigs, fastaReference, broadcastReference, vcfOutputFileName,
+                localLogger, null, samSequenceDictionary);
+    }
 
-        final JavaRDD<VariantContext> annotatedVariants =
+    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs, final String fastaReference,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final String vcfOutputFileName, final Logger localLogger,
+                                                   final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                   final SAMSequenceDictionary sequenceDictionary) {
+
+        JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
                                 ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH)))
                         .flatMapToPair(DiscoverVariantsFromContigAlignmentsSAMSpark::discoverNovelAdjacencyFromChimericAlignments)    // a filter-passing contig's alignments may or may not produce novel adjacency
                         .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
-                        .map(noveltyTypeAndEvidence -> annotateVariant(noveltyTypeAndEvidence._1,                                     // annotate the novel adjacency and inferred type
-                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference));
+            .map(noveltyTypeAndEvidence -> annotateVariant(noveltyTypeAndEvidence._1,                                     // annotate the novel adjacency and inferred type
+                                                           noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2,
+                    broadcastReference));
 
-        SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, annotatedVariants, toolLogger);
+        List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
+
+        if (evidenceTargetLinks != null) {
+            collectedAnnotatedVariants = collectedAnnotatedVariants
+                    .stream()
+                    .map(variant -> annotateWithImpreciseEvidenceLinks(variant,
+                            evidenceTargetLinks,
+                            sequenceDictionary))
+                            .collect(Collectors.toList());
+        }
+
+        final List<VariantContext> impreciseVariants =
+                Utils.stream(evidenceTargetLinks)
+                        .filter(DiscoverVariantsFromContigAlignmentsSAMSpark::isImpreciseDeletion)
+                        .filter(e -> e._2.getReadPairs() + e._2.getSplitReads() > 7)
+                        .map(e -> createImpreciseDeletionVariant(e._2, sequenceDictionary, broadcastReference.getValue()))
+                        .collect(Collectors.toList());
+
+        localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
+        collectedAnnotatedVariants.addAll(impreciseVariants);
+
+        SVVCFWriter.writeVCF(vcfOutputFileName, localLogger, collectedAnnotatedVariants,
+                sequenceDictionary);
+    }
+
+    private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
+                                                                 final SAMSequenceDictionary sequenceDictionary,
+                                                                 final ReferenceMultiSource reference) {
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e);
+        return AnnotatedVariantProducer
+                .produceAnnotatedVcFromEvidenceTargetLink(e, svType, sequenceDictionary, reference);
+    }
+
+    private static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
+                                                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                     final SAMSequenceDictionary referenceSequenceDictionary) {
+        if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
+            StructuralVariantContext svc = StructuralVariantContext.create(variant);
+            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary);
+
+            final Iterator<Tuple2<PairedStrandedIntervals, EvidenceTargetLink>> overlappers = evidenceTargetLinks.overlappers(svcIntervals);
+            int readPairs = 0;
+            int splitReads = 0;
+            while (overlappers.hasNext()) {
+                final Tuple2<PairedStrandedIntervals, EvidenceTargetLink> next = overlappers.next();
+                readPairs += next._2.getReadPairs();
+                splitReads += next._2.getSplitReads();
+                overlappers.remove();
+            }
+            if (readPairs == 0 && splitReads == 0) {
+                return variant;
+            }
+            final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+            if (readPairs > 0) {
+                variantContextBuilder.attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, readPairs);
+            }
+            if (splitReads > 0) {
+                variantContextBuilder.attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, splitReads);
+            }
+
+            return variantContextBuilder.make();
+        } else {
+            return variant;
+        }
     }
 
     // TODO: 7/6/17 interface to be changed in the new implementation, where one contig produces a set of NARL's.

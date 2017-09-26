@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -30,8 +31,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
  * Tool to run the sv pipeline up to and including variant discovery
@@ -89,10 +90,26 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
+        final List<EvidenceTargetLink> evidenceTargetLinks = alignedAssemblyOrExcuseAndLinkList._2;
+        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceLinkTree;
+
+        if (evidenceTargetLinks != null) {
+            evidenceLinkTree = new PairedStrandedIntervalTree<>();
+            evidenceTargetLinks.forEach(l -> evidenceLinkTree.put(l.getPairedStrandedIntervals(), l));
+        } else {
+            evidenceLinkTree = null;
+        }
+
         // discover variants and write to vcf
         DiscoverVariantsFromContigAlignmentsSAMSpark
-                .discoverVariantsAndWriteVCF(parsedAlignments, discoverStageArgs.fastaReference,
-                        ctx.broadcast(getReference()), pipelineOptions, vcfOutputFileName, localLogger);
+                .discoverVariantsAndWriteVCF(
+                        parsedAlignments,
+                        discoverStageArgs.fastaReference,
+                        ctx.broadcast(getReference()),
+                        vcfOutputFileName,
+                        localLogger,
+                        evidenceLinkTree,
+                        header.getSequenceDictionary());
     }
 
     public static final class InMemoryAlignmentParser extends AlignedContigGenerator implements Serializable {

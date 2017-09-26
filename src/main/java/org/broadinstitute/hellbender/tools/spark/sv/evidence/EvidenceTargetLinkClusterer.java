@@ -25,9 +25,6 @@ public class EvidenceTargetLinkClusterer {
         while (breakpointEvidenceIterator.hasNext()) {
             final BreakpointEvidence nextEvidence = breakpointEvidenceIterator.next();
             if (nextEvidence.hasDistalTargets(readMetadata, minEvidenceMapq)) {
-                if (nextEvidence.getDistalTargets(readMetadata, minEvidenceMapq).get(0).getInterval().isUpstreamOf(nextEvidence.getLocation())) {
-                    continue;
-                }
                 Utils.validate(nextEvidence instanceof BreakpointEvidence.SplitRead || nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence,
                         "Unknown evidence type with distal target: " + nextEvidence);
                 EvidenceTargetLink updatedLink = null;

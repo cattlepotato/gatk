@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -8,7 +9,9 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -103,6 +106,35 @@ public class AnnotatedVariantProducer implements Serializable {
         if (end > 0)
             vcBuilder.attribute(VCFConstants.END_KEY, applicableEnd);
         return vcBuilder.make();
+    }
+
+    public static VariantContext produceAnnotatedVcFromEvidenceTargetLink(final EvidenceTargetLink e,
+                                                                          final SvType svType,
+                                                                          final SAMSequenceDictionary sequenceDictionary,
+                                                                          final ReferenceMultiSource reference) {
+        final String sequenceName = sequenceDictionary.getSequence(e.getPairedStrandedIntervals().getLeft().getInterval().getContig()).getSequenceName();
+        final int start = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint();
+        final int end = e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
+        try {
+            final VariantContextBuilder builder = new VariantContextBuilder()
+                    .chr(sequenceName)
+                    .start(start)
+                    .stop(end)
+                    .id(svType.variantId)
+                    .alleles(produceAlleles(new SimpleInterval(sequenceName, start, start), reference, svType))
+                    .attribute(GATKSVVCFConstants.SVLEN, svType.getSVLength())
+                    .attribute(GATKSVVCFConstants.SVTYPE, svType.toString())
+                    .attribute(GATKSVVCFConstants.IMPRECISE, true)
+                    .attribute(GATKSVVCFConstants.CIPOS, String.join(",",
+                            String.valueOf(e.getPairedStrandedIntervals().getLeft().getInterval().getStart() - start),
+                            String.valueOf(e.getPairedStrandedIntervals().getLeft().getInterval().getEnd() - start)))
+                    .attribute(GATKSVVCFConstants.CIEND, String.join(",",
+                            String.valueOf(e.getPairedStrandedIntervals().getRight().getInterval().getStart() - end),
+                            String.valueOf(e.getPairedStrandedIntervals().getRight().getInterval().getEnd() - end)));
+            return builder.make();
+        } catch (IOException e1) {
+            throw new GATKException("error reading reference base for variant context " + svType.variantId, e1);
+        }
     }
 
     // TODO: 12/13/16 again ignoring translocation
