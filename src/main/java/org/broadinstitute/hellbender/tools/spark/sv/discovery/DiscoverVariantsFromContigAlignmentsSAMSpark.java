@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -97,11 +98,10 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                 .getAlignedContigs();
 
         discoverVariantsAndWriteVCF(parsedContigAlignments,
-                discoverStageArgs.fastaReference,
+                discoverStageArgs,
                 ctx.broadcast(getReference()),
                 vcfOutputFileName,
                 localLogger,
-                null,
                 headerForReads.getSequenceDictionary());
     }
 
@@ -180,18 +180,21 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * turn into annotated {@link VariantContext}'s, and writes them to VCF.
      */
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
-                                                   final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
                                                    final String vcfOutputFileName,
                                                    final Logger localLogger,
                                                    final SAMSequenceDictionary samSequenceDictionary) {
-        discoverVariantsAndWriteVCF(alignedContigs, fastaReference, broadcastReference, vcfOutputFileName,
-                localLogger, null, samSequenceDictionary);
+        discoverVariantsAndWriteVCF(alignedContigs, parameters, broadcastReference, vcfOutputFileName,
+                localLogger, null, null, samSequenceDictionary);
     }
 
-    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs, final String fastaReference,
+    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
+                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                                    final String vcfOutputFileName, final Logger localLogger,
                                                    final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                   final ReadMetadata metadata,
                                                    final SAMSequenceDictionary sequenceDictionary) {
 
         JavaRDD<VariantContext> annotatedVariants =
@@ -208,23 +211,26 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
 
         if (evidenceTargetLinks != null) {
+            final int originalEvidenceLinkSize = evidenceTargetLinks.size();
             collectedAnnotatedVariants = collectedAnnotatedVariants
                     .stream()
                     .map(variant -> annotateWithImpreciseEvidenceLinks(variant,
                             evidenceTargetLinks,
-                            sequenceDictionary))
+                            sequenceDictionary,
+                            metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
                             .collect(Collectors.toList());
+            localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
+
+            final List<VariantContext> impreciseVariants =
+                    Utils.stream(evidenceTargetLinks)
+                            .filter(DiscoverVariantsFromContigAlignmentsSAMSpark::isImpreciseDeletion)
+                            .filter(e -> e._2.getReadPairs() + e._2.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
+                            .map(e -> createImpreciseDeletionVariant(e._2, sequenceDictionary, broadcastReference.getValue()))
+                            .collect(Collectors.toList());
+
+            localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
+            collectedAnnotatedVariants.addAll(impreciseVariants);
         }
-
-        final List<VariantContext> impreciseVariants =
-                Utils.stream(evidenceTargetLinks)
-                        .filter(DiscoverVariantsFromContigAlignmentsSAMSpark::isImpreciseDeletion)
-                        .filter(e -> e._2.getReadPairs() + e._2.getSplitReads() > 7)
-                        .map(e -> createImpreciseDeletionVariant(e._2, sequenceDictionary, broadcastReference.getValue()))
-                        .collect(Collectors.toList());
-
-        localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
-        collectedAnnotatedVariants.addAll(impreciseVariants);
 
         SVVCFWriter.writeVCF(vcfOutputFileName, localLogger, collectedAnnotatedVariants,
                 sequenceDictionary);
@@ -233,17 +239,20 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
                                                                  final SAMSequenceDictionary sequenceDictionary,
                                                                  final ReferenceMultiSource reference) {
-        final SvType svType = new SimpleSVType.ImpreciseDeletion(e);
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, sequenceDictionary);
         return AnnotatedVariantProducer
                 .produceAnnotatedVcFromEvidenceTargetLink(e, svType, sequenceDictionary, reference);
     }
 
     private static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
                                                                      final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                                                     final SAMSequenceDictionary referenceSequenceDictionary) {
+                                                                     final SAMSequenceDictionary referenceSequenceDictionary,
+                                                                     final ReadMetadata metadata,
+                                                                     final int defaultUncertainty) {
         if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
             StructuralVariantContext svc = StructuralVariantContext.create(variant);
-            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary);
+            final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);
+            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary, padding);
 
             final Iterator<Tuple2<PairedStrandedIntervals, EvidenceTargetLink>> overlappers = evidenceTargetLinks.overlappers(svcIntervals);
             int readPairs = 0;

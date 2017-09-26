@@ -25,7 +25,6 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import scala.Serializable;
-import scala.Tuple2;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -77,20 +76,36 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
         // gather evidence, run assembly, and align
-        final Tuple2<List<AlignedAssemblyOrExcuse>, List<EvidenceTargetLink>> alignedAssemblyOrExcuseAndLinkList =
+        final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults =
                 FindBreakpointEvidenceSpark
                         .gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
                                 outputAssemblyAlignments, localLogger);
         // todo: when we call imprecise variants don't return here
-        if (alignedAssemblyOrExcuseAndLinkList._1().isEmpty()) return;
+        if (assembledEvidenceResults.getAlignedAssemblyOrExcuseList().isEmpty()) return;
 
         // parse the contig alignments and extract necessary information
         final JavaRDD<AlignedContig> parsedAlignments =
-                new InMemoryAlignmentParser(ctx, alignedAssemblyOrExcuseAndLinkList._1(), header, localLogger).getAlignedContigs();
+                new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), header, localLogger).getAlignedContigs();
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
-        final List<EvidenceTargetLink> evidenceTargetLinks = alignedAssemblyOrExcuseAndLinkList._2;
+        final List<EvidenceTargetLink> evidenceTargetLinks = assembledEvidenceResults.getEvidenceTargetLinks();
+        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceLinkTree = makeEvidenceLinkTree(evidenceTargetLinks);
+
+        // discover variants and write to vcf
+        DiscoverVariantsFromContigAlignmentsSAMSpark
+                .discoverVariantsAndWriteVCF(
+                        parsedAlignments,
+                        discoverStageArgs,
+                        ctx.broadcast(getReference()),
+                        vcfOutputFileName,
+                        localLogger,
+                        evidenceLinkTree,
+                        assembledEvidenceResults.getReadMetadata(),
+                        header.getSequenceDictionary());
+    }
+
+    private PairedStrandedIntervalTree<EvidenceTargetLink> makeEvidenceLinkTree(final List<EvidenceTargetLink> evidenceTargetLinks) {
         final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceLinkTree;
 
         if (evidenceTargetLinks != null) {
@@ -99,17 +114,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         } else {
             evidenceLinkTree = null;
         }
-
-        // discover variants and write to vcf
-        DiscoverVariantsFromContigAlignmentsSAMSpark
-                .discoverVariantsAndWriteVCF(
-                        parsedAlignments,
-                        discoverStageArgs.fastaReference,
-                        ctx.broadcast(getReference()),
-                        vcfOutputFileName,
-                        localLogger,
-                        evidenceLinkTree,
-                        header.getSequenceDictionary());
+        return evidenceLinkTree;
     }
 
     public static final class InMemoryAlignmentParser extends AlignedContigGenerator implements Serializable {

@@ -66,7 +66,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         final JavaRDD<AlignedContig> parsedContigAlignments
                 = new SGATextFormatAlignmentParser(ctx, inputAssemblies, inputAlignments, logContigAlignmentSimpleStats ? localLogger : null).getAlignedContigs();
 
-        DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(parsedContigAlignments, fastaReference,
+        DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(parsedContigAlignments, null,
                 ctx.broadcast(getReference()), vcfOutput, localLogger, getReferenceSequenceDictionary());
     }
 

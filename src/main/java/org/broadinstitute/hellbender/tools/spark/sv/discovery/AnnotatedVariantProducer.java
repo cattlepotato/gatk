@@ -122,6 +122,7 @@ public class AnnotatedVariantProducer implements Serializable {
                     .stop(end)
                     .id(svType.variantId)
                     .alleles(produceAlleles(new SimpleInterval(sequenceName, start, start), reference, svType))
+                    .attribute(VCFConstants.END_KEY, end)
                     .attribute(GATKSVVCFConstants.SVLEN, svType.getSVLength())
                     .attribute(GATKSVVCFConstants.SVTYPE, svType.toString())
                     .attribute(GATKSVVCFConstants.IMPRECISE, true)
@@ -130,7 +131,9 @@ public class AnnotatedVariantProducer implements Serializable {
                             String.valueOf(e.getPairedStrandedIntervals().getLeft().getInterval().getEnd() - start)))
                     .attribute(GATKSVVCFConstants.CIEND, String.join(",",
                             String.valueOf(e.getPairedStrandedIntervals().getRight().getInterval().getStart() - end),
-                            String.valueOf(e.getPairedStrandedIntervals().getRight().getInterval().getEnd() - end)));
+                            String.valueOf(e.getPairedStrandedIntervals().getRight().getInterval().getEnd() - end)))
+                    .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, e.getReadPairs())
+                    .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, e.getSplitReads());
             return builder.make();
         } catch (IOException e1) {
             throw new GATKException("error reading reference base for variant context " + svType.variantId, e1);

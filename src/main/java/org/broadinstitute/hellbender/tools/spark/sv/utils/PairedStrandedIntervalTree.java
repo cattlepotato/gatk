@@ -4,10 +4,12 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 @DefaultSerializer(PairedStrandedIntervalTree.Serializer.class)
 public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStrandedIntervals, V>> {
@@ -34,6 +36,10 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         }
 
         return true;
+    }
+
+    public int size() {
+        return Utils.stream(leftEnds).mapToInt(e -> e.getValue()._2.size()).sum();
     }
 
     public final class PairedStrandedIntervalTreeOverlapperIterator implements Iterator<Tuple2<PairedStrandedIntervals, V>> {

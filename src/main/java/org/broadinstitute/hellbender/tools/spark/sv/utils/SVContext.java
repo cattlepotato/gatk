@@ -266,7 +266,9 @@ public final class SVContext extends VariantContext {
      * @param dictionary reference meta-data.
      * @return never {@code null}, potentially 0-length but typically at least one element.
      */
-    public List<SimpleInterval> getBreakPointIntervals(final int padding, final SAMSequenceDictionary dictionary) {
+    public List<SimpleInterval> getBreakPointIntervals(final int padding,
+                                                       final SAMSequenceDictionary dictionary,
+                                                       final boolean padForHomology) {
         ParamUtils.isPositiveOrZero(padding, "the input padding must be 0 or greater");
         Utils.nonNull(dictionary, "the input dictionary cannot be null");
         final String contigName = getContig();
@@ -278,11 +280,12 @@ public final class SVContext extends VariantContext {
                     composePaddedInterval(contigName, contigLength, start, start, padding));
         } else if (type == StructuralVariantType.DEL) {
             final int end = getEnd();
+            final int homologyPadding = (padForHomology ? getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0) : 0);
             return Arrays.asList(
                     composePaddedInterval(contigName, contigLength, start + 1,
-                            start + 1 + + getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0), padding),
+                            start + 1 + homologyPadding, padding),
                     composePaddedInterval(contigName, contigLength, end,
-                            end + getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0), padding));
+                            end + homologyPadding, padding));
         } else {
             // Please, add more types as needed!
             throw new UnsupportedOperationException("currently only supported for INS and DELs");
@@ -297,10 +300,10 @@ public final class SVContext extends VariantContext {
 
     }
 
-    public PairedStrandedIntervals getPairedStrandedIntervals(final SAMSequenceDictionary samSequenceDictionary) {
+    public PairedStrandedIntervals getPairedStrandedIntervals(final SAMSequenceDictionary samSequenceDictionary, final int padding) {
         final StructuralVariantType type = getStructuralVariantType();
         if (type == StructuralVariantType.DEL) {
-            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(0, samSequenceDictionary);
+            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(padding, samSequenceDictionary, true);
             final SimpleInterval leftBreakpointSimpleInterval = breakPointIntervals.get(0);
             final SVInterval leftBreakpointInterval = new SVInterval(
                     samSequenceDictionary.getSequenceIndex(leftBreakpointSimpleInterval.getContig()),
