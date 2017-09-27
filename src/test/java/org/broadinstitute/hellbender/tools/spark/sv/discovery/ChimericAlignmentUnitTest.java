@@ -174,7 +174,6 @@ public class ChimericAlignmentUnitTest extends BaseTest {
         Assert.assertEquals(ChimericAlignment.involvesRefPositionSwitch(region1, region2), expectedRefPositionSwitch);
         Assert.assertEquals(ChimericAlignment.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, expectedRefPositionSwitch), expectedIsForwardStrandRepresentation);
         Assert.assertEquals(ChimericAlignment.isNotSimpleTranslocation(region1, region2, expectedStrandSwitch, expectedRefPositionSwitch), expectedIsNotSimpleTranslocation);
-        Assert.assertEquals(, ex);
     }
 
     private static void testSerialization(final AlignmentInterval region1, final AlignmentInterval region2) {
