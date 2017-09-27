@@ -265,7 +265,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                                      final ReadMetadata metadata,
                                                                      final int defaultUncertainty) {
         if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
-            StructuralVariantContext svc = StructuralVariantContext.create(variant);
+            SVContext svc = SVContext.of(variant);
             final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);
             PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary, padding);
 
