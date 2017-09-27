@@ -125,10 +125,7 @@ public final class BreakpointComplications {
 
         // a segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
         // under two basic types of SV's: inversion (strand switch necessary) and translocation (no strand switch necessary)
-        final boolean isNotSimpleTranslocation =
-                ChimericAlignment.isNotSimpleTranslocation(chimericAlignment.regionWithLowerCoordOnContig,
-                        chimericAlignment.regionWithHigherCoordOnContig, chimericAlignment.strandSwitch,
-                        ChimericAlignment.involvesRefPositionSwitch(firstAlignmentInterval, secondAlignmentInterval));
+        final boolean isNotSimpleTranslocation = chimericAlignment.isNotSimpleTranslocation();
 
         // TODO: 12/5/16 simple translocation, don't tackle yet
         if (chimericAlignment.strandSwitch!= StrandSwitch.NO_SWITCH) { // the case involves an inversion
@@ -156,6 +153,7 @@ public final class BreakpointComplications {
      */
     @VisibleForTesting
     public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
+        if (one.forwardStrand==two.forwardStrand) return false;
         return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
                 Math.min(one.endInAssembledContig - one.startInAssembledContig,
                         two.endInAssembledContig - two.startInAssembledContig) + 1;

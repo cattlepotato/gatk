@@ -26,7 +26,7 @@ public class NovelAdjacencyReferenceLocations {
     public final StrandSwitch strandSwitch;
     public final BreakpointComplications complication;
 
-    public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence){
+    public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence) {
 
         // first get strand switch type, then get complications, finally use complications to justify breakpoints
         strandSwitch = chimericAlignment.strandSwitch;
@@ -63,35 +63,29 @@ public class NovelAdjacencyReferenceLocations {
                                                                          final BreakpointComplications complication) {
 
         final int homologyLen = complication.getHomologyForwardStrandRep().length();
+        final Tuple2<SimpleInterval, SimpleInterval> coordSortedReferenceSpans = ca.getCoordSortedReferenceSpans();
+        final SimpleInterval leftReferenceInterval  = coordSortedReferenceSpans._1,
+                             rightReferenceInterval = coordSortedReferenceSpans._2;
 
         final String leftBreakpointRefContig, rightBreakpointRefContig;
         final int leftBreakpointCoord, rightBreakpointCoord;
         if (complication.hasDuplicationAnnotation()) { // todo : development artifact-- assuming tandem duplication is not co-existing with inversion
-            leftBreakpointRefContig = rightBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
-            final SimpleInterval leftReferenceInterval, rightReferenceInterval;
-            if (ca.isForwardStrandRepresentation) {
-                leftReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
+            leftBreakpointRefContig = rightBreakpointRefContig = leftReferenceInterval.getContig();
+            if (leftReferenceInterval.contains(rightReferenceInterval)) {
+                leftBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getStart();
+                rightBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getEnd();
             } else {
-                leftReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
+                final int expansionDiffMayBeNegative = complication.getDupSeqRepeatNumOnCtg() - complication.getDupSeqRepeatNumOnRef();
+                if (expansionDiffMayBeNegative > 0) {
+                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen + 1
+                                             - expansionDiffMayBeNegative * complication.getDupSeqRepeatUnitRefSpan().size();
+                } else {
+                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen; // no shift by 1 because for deletion record, POS is base BEFORE the deleted sequence
+                }
+                // TODO: 9/26/17 if we decide to treat dup as insertion so POS==END, rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
+                rightBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getEnd();
             }
-            if (complication.getDupSeqRepeatNumOnCtg() > complication.getDupSeqRepeatNumOnRef()) {
-                leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen
-                        - (complication.getDupSeqRepeatNumOnCtg() - complication.getDupSeqRepeatNumOnRef()) * complication.getDupSeqRepeatUnitRefSpan().size();
-            } else {
-                leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen;
-            }
-            rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
         } else { // inversion and simple deletion & insertion
-            final SimpleInterval leftReferenceInterval, rightReferenceInterval;
-            if (ca.isForwardStrandRepresentation) {
-                leftReferenceInterval  = ca.regionWithLowerCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
-            } else {
-                leftReferenceInterval  = ca.regionWithHigherCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
-            }
             leftBreakpointRefContig  = leftReferenceInterval.getContig();
             rightBreakpointRefContig = rightReferenceInterval.getContig();
             if (ca.strandSwitch == StrandSwitch.NO_SWITCH) {
@@ -108,7 +102,8 @@ public class NovelAdjacencyReferenceLocations {
 
         Utils.validate(leftBreakpointCoord <= rightBreakpointCoord,
                 "Inferred novel adjacency reference locations have left location after right location : " +
-                        leftBreakpointCoord + "\t" + rightBreakpointCoord + ca.onErrStringRep() + "\n" + complication.toString());
+                        leftBreakpointRefContig + ":" + leftBreakpointCoord + "-" + rightBreakpointCoord + "\n" +
+                        ca.onErrStringRep() + "\t" + complication.toString());
 
         final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
         final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
