@@ -211,29 +211,44 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
 
         if (evidenceTargetLinks != null) {
-            final int originalEvidenceLinkSize = evidenceTargetLinks.size();
-            collectedAnnotatedVariants = collectedAnnotatedVariants
-                    .stream()
-                    .map(variant -> annotateWithImpreciseEvidenceLinks(variant,
-                            evidenceTargetLinks,
-                            sequenceDictionary,
-                            metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
-                            .collect(Collectors.toList());
-            localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
-
-            final List<VariantContext> impreciseVariants =
-                    Utils.stream(evidenceTargetLinks)
-                            .filter(DiscoverVariantsFromContigAlignmentsSAMSpark::isImpreciseDeletion)
-                            .filter(e -> e._2.getReadPairs() + e._2.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
-                            .map(e -> createImpreciseDeletionVariant(e._2, sequenceDictionary, broadcastReference.getValue()))
-                            .collect(Collectors.toList());
-
-            localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
-            collectedAnnotatedVariants.addAll(impreciseVariants);
+            collectedAnnotatedVariants = processEvidenceTargetLinks(parameters,
+                    localLogger,
+                    evidenceTargetLinks,
+                    metadata,
+                    collectedAnnotatedVariants, broadcastReference.getValue());
         }
 
         SVVCFWriter.writeVCF(vcfOutputFileName, localLogger, collectedAnnotatedVariants,
                 sequenceDictionary);
+    }
+
+    @VisibleForTesting
+    static List<VariantContext> processEvidenceTargetLinks(final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                                   final Logger localLogger,
+                                                                   final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                   final ReadMetadata metadata,
+                                                                   List<VariantContext> collectedAnnotatedVariants,
+                                                                   final ReferenceMultiSource reference) {
+        final int originalEvidenceLinkSize = evidenceTargetLinks.size();
+        collectedAnnotatedVariants = collectedAnnotatedVariants
+                .stream()
+                .map(variant -> annotateWithImpreciseEvidenceLinks(variant,
+                        evidenceTargetLinks,
+                        reference.getReferenceSequenceDictionary(null),
+                        metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
+                        .collect(Collectors.toList());
+        localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
+
+        final List<VariantContext> impreciseVariants =
+                Utils.stream(evidenceTargetLinks)
+                        .filter(DiscoverVariantsFromContigAlignmentsSAMSpark::isImpreciseDeletion)
+                        .filter(e -> e._2.getReadPairs() + e._2.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
+                        .map(e -> createImpreciseDeletionVariant(e._2, reference.getReferenceSequenceDictionary(null), reference))
+                        .collect(Collectors.toList());
+
+        localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
+        collectedAnnotatedVariants.addAll(impreciseVariants);
+        return collectedAnnotatedVariants;
     }
 
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,

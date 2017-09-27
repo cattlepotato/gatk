@@ -132,8 +132,8 @@ public abstract class SimpleSVType extends SvType {
 
             super(getIDString(evidenceTargetLink, sequenceDictionary),
                     Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER)),
-                    (evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getStart() -
-                            evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getEnd()),
+                    (evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().midpoint() -
+                            evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().midpoint()),
                     Collections.EMPTY_MAP);
         }
 
@@ -146,7 +146,7 @@ public abstract class SimpleSVType extends SvType {
                     + evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getStart() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
                     + evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
                     + evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getStart() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
-                    + evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR;
+                    + evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getEnd();
         }
     }
 
