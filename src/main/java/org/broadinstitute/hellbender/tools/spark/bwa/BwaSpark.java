@@ -8,12 +8,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 @CommandLineProgramProperties(summary = "Runs BWA",
         oneLineSummary = "BWA on Spark",
@@ -35,7 +39,7 @@ public final class BwaSpark extends GATKSparkTool {
 
     @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
             fullName = BWA_MEM_INDEX_IMAGE_FULL_NAME,
-            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME )
+            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME)
     private String indexImageFile;
 
     @Argument(doc = "run single end instead of paired-end alignment",
@@ -53,6 +57,32 @@ public final class BwaSpark extends GATKSparkTool {
     public boolean requiresReads() {
         return true;
     }
+
+    @Override
+    protected Object doWork() {
+        final String referenceURL = referenceArguments.getReferenceFileName();
+        final String indexImageFile = referenceURL + ".img";
+        System.out.println("tw: indexImageFile " + indexImageFile);
+        final Map<String, String> extraSparkProperties = Collections.singletonMap("spark.files", indexImageFile);
+        final Map<String, String> sparkProperties = sparkArgs.getSparkProperties();
+        appendExtraSparkProperties(sparkProperties, extraSparkProperties);
+        final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkProperties, sparkArgs.getSparkMaster());
+        try{
+            runPipeline(ctx);
+            return null;
+        } finally {
+            afterPipeline(ctx);
+        }
+    }
+
+    private void appendExtraSparkProperties(@Nonnull final Map<String, String> originalProperties,
+                                            @Nonnull final Map<String, String> extraProperties) {
+        extraProperties.keySet().forEach(key ->
+                originalProperties.put(key, originalProperties.containsKey(key)
+                        ? originalProperties.get(key) + "," + extraProperties.get(key)
+                        : extraProperties.get(key)));
+    }
+
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
