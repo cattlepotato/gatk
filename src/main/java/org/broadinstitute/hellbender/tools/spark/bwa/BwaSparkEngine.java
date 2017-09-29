@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -94,7 +95,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         private static final int READS_PER_PARTITION_GUESS = 1500000;
 
         ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
-            this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
+            this.bwaMemIndex = BwaMemIndexCache.getInstance(SparkFiles.get(indexFileName));
             this.readsHeader = readsHeader;
             this.alignsPairs = alignsPairs;
         }
