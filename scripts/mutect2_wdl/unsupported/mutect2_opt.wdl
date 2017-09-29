@@ -21,7 +21,6 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 
-
 workflow Mutect2 {
   File? intervals
   File ref_fasta
@@ -242,7 +241,6 @@ workflow Mutect2 {
     }
   }
 
-
   if (is_run_oncotator) {
   	File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
     Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * 2) + onco_tar_size + disk_pad
@@ -268,17 +266,17 @@ workflow Mutect2 {
     File unfiltered_vcf_index = MergeVCFs.output_vcf_index
     File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
     File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
-    File? contamination_table = CalculateContam.contamination_table
     Array[String] tumor_bam_sample_names = M2.tumor_bam_sample_name
     String tumor_bam_sample_name = tumor_bam_sample_names[0]
     Array[String] normal_bam_sample_names = M2.normal_bam_sample_name
     String normal_bam_sample_name = normal_bam_sample_names[0]
 
     # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
-    File? oncotated_m2_maf = select_first([Oncotate_m2.oncotated_m2_maf, "null"])
-    File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-    File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-    File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+    File contamination_table = select_first([CalculateContam.contamination_table, "null"])
+    File oncotated_m2_maf = select_first([Oncotate_m2.oncotated_m2_maf, "null"])
+    File preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
+    File bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
+    File bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
   }
 }
 
@@ -767,6 +765,7 @@ task SumFloats {
   }
   runtime {
     docker: "python:2.7"
+    disks: "local-disk " + 10 + " HDD"
     preemptible: select_first([preemptible_attempts, 3])
   }
 }
