@@ -306,7 +306,7 @@ task M2 {
   Int disk_space_gb
   Int? mem
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 3500
   Int command_mem = machine_mem - 500
 
@@ -314,7 +314,6 @@ task M2 {
   File? auth
 
   command <<<
-
   if [[ "${auth}" == *.json ]]; then
     gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
     GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
@@ -405,7 +404,7 @@ task MergeVCFs {
   Int disk_space_gb
   Int? mem
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 3500
   Int command_mem = machine_mem - 500
 
@@ -439,7 +438,7 @@ task CollectSequencingArtifactMetrics {
   Int disk_space_gb
   Int? mem
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 7000
   Int command_mem = machine_mem - 500
 
@@ -478,7 +477,7 @@ task CalculateContam {
   # Do not populate this unless you know what you are doing...
   File? auth
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 7000
   Int command_mem = machine_mem - 500
 
@@ -526,7 +525,7 @@ task Filter {
   # Do not populate this unless you know what you are doing...
   File? auth
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 7000
   Int command_mem = machine_mem - 500
 
@@ -573,7 +572,7 @@ task FilterByOrientationBias {
   # Do not populate this unless you know what you are doing...
   File? auth
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 7000
   Int command_mem = machine_mem - 500
 
@@ -621,12 +620,11 @@ task SplitIntervals {
   Int disk_space_gb
   Int? mem
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 3500
   Int command_mem = machine_mem - 500
 
   command {
-    # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
     set -e
 
     mkdir interval-files
@@ -662,7 +660,7 @@ task MergeBamOuts {
   Int? preemptible_attempts
   Int disk_space_gb
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 7000
   Int command_mem = machine_mem - 500
 
@@ -705,13 +703,11 @@ task Oncotate_m2 {
   Int disk_space_gb
   Int? mem
 
-  # Mem is in units of MB
+  # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 3500
   Int command_mem = machine_mem - 500
 
   command <<<
-
-    # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
     set -e
 
     # local db dir is a directory and has been specified
