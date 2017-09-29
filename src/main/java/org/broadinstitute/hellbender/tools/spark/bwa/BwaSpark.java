@@ -37,9 +37,6 @@ public final class BwaSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String output;
 
-    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
-            fullName = BWA_MEM_INDEX_IMAGE_FULL_NAME,
-            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME)
     private String indexImageFile;
 
     @Argument(doc = "run single end instead of paired-end alignment",
@@ -61,7 +58,7 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     protected Object doWork() {
         final String referenceURL = referenceArguments.getReferenceFileName();
-        final String indexImageFile = referenceURL + ".img";
+        indexImageFile = referenceURL + ".img";
         System.out.println("tw: indexImageFile " + indexImageFile);
         final Map<String, String> extraSparkProperties = Collections.singletonMap("spark.files", indexImageFile);
         final Map<String, String> sparkProperties = sparkArgs.getSparkProperties();
