@@ -29,15 +29,11 @@ public final class BwaSpark extends GATKSparkTool {
 
     public static final String SINGLE_END_ALIGNMENT_FULL_NAME = "singleEndAlignment";
     public static final String SINGLE_END_ALIGNMENT_SHORT_NAME = "SE";
-    public static final String BWA_MEM_INDEX_IMAGE_FULL_NAME = "bwaMemIndexImage";
-    public static final String BWA_MEM_INDEX_IMAGE_SHORT_NAME = "image";
 
     @Argument(doc = "the output bam",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String output;
-
-    private String indexImageFile;
 
     @Argument(doc = "run single end instead of paired-end alignment",
               fullName = SINGLE_END_ALIGNMENT_FULL_NAME,
@@ -58,9 +54,7 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     protected Object doWork() {
         final String referenceURL = referenceArguments.getReferenceFileName();
-        indexImageFile = referenceURL + ".img";
-        System.out.println("tw: indexImageFile " + indexImageFile);
-        final Map<String, String> extraSparkProperties = Collections.singletonMap("spark.files", indexImageFile);
+        final Map<String, String> extraSparkProperties = Collections.singletonMap("spark.files", referenceURL + ".img");
         final Map<String, String> sparkProperties = sparkArgs.getSparkProperties();
         appendExtraSparkProperties(sparkProperties, extraSparkProperties);
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkProperties, sparkArgs.getSparkMaster());
@@ -83,6 +77,7 @@ public final class BwaSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        String indexImageFile = referenceArguments.getReferencePath().getFileName() + ".img";
         try ( final BwaSparkEngine engine =
                       new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
             final JavaRDD<GATKRead> reads = !singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
