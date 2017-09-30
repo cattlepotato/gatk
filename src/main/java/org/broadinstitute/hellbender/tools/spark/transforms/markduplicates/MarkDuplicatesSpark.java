@@ -20,7 +20,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import scala.Tuple2;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -54,6 +56,16 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
+    public static JavaRDD<GATKRead> mark(JavaPairRDD<String,List<byte[]>> nameAndQual, final JavaRDD<GATKRead> reads, final SAMFileHeader header,
+                                         final MarkDuplicatesScoringStrategy scoringStrategy,
+                                         final OpticalDuplicateFinder opticalDuplicateFinder, final int numReducers) {
+
+        JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !ReadUtils.isNonPrimary(v1));
+        JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
+        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(nameAndQual, header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
+
+        return primaryReadsTransformed.union(nonPrimaryReads);
+    }
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder, final int numReducers) {
@@ -70,8 +82,23 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        
+        JavaRDD<String> qual = ctx.textFile("/home/jryoung/documents/cuda_mem_testdata/chr3_100_100_nameAndqual");
+        JavaPairRDD<String,List<byte[]>>  nameAndQual = qual.mapToPair(line->{
+            String [] a = line.split(",");
+            List<byte[]> baseQual = new ArrayList<>(2);
+            for(int k = 1;k<=2;k++){
+                byte[] realqual  = a[k].getBytes();
+                for(int j=0;j<realqual.length;j++){
+                    realqual[j]=(byte)((int)realqual[j]-33);
+                }
+                baseQual.add(realqual);
+            }
 
-        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
+            return new Tuple2<>(a[0], baseQual);
+
+        });
+        final JavaRDD<GATKRead> finalReadsForMetrics = mark(nameAndQual,reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
 
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);

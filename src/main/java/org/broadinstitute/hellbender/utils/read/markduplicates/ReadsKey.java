@@ -60,6 +60,11 @@ public final class ReadsKey {
                 read.getReadGroup(),
                 read.getName());
     }
+    public static String keyForRead( final GATKRead read) {
+        return String.format(
+                "%s",
+                read.getName());
+    }
 
     /**
      * Returns true if the key is a fragment key.

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import com.google.common.collect.*;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -57,6 +59,97 @@ public class MarkDuplicatesSparkUtils {
             keyedReads = keyReadPairs.groupByKey(numReducers);
         }
 
+        JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
+            List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
+            // Write each read out as a pair with only the first slot filled
+            for (GATKRead read : keyedRead._2()) {
+                read.setIsDuplicate(false);
+                final PairedEnds pair = PairedEnds.of(read);
+                out.add(new Tuple2<>(pair.keyForFragment(header), pair));
+            }
+            // Write each paired read with a mapped mate as a pair
+            final List<GATKRead> sorted = Lists.newArrayList(Iterables.filter(keyedRead._2(), read -> ReadUtils.readHasMappedMate(read)));
+            sorted.sort(new GATKOrder(header));
+            PairedEnds pair = null;
+            //Records are sorted, we iterate over them and pair them up.
+            for (final GATKRead record : sorted) {
+                if (pair == null) {                                //first in pair
+                    pair = PairedEnds.of(record);
+                } else {                                           //second in pair
+                    pair.and(record);
+                    out.add(new Tuple2<>(pair.key(header), pair));
+                    pair = null;                                   //back to first
+                }
+            }
+            if (pair != null) {                                    //left over read
+                out.add(new Tuple2<>(pair.key(header), pair));
+            }
+            return out.iterator();
+        }).groupByKey(numReducers);
+
+        return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
+    }
+
+    static JavaRDD<GATKRead> transformReads(JavaPairRDD<String,List<byte[]>> nameAndqula, final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> reads, final int numReducers) {
+
+        JavaPairRDD<String, Iterable<GATKRead>> keyedReads;
+        if (SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder())) {
+            // reads are already sorted by name, so perform grouping within the partition (no shuffle)
+            keyedReads = spanReadsByKey(header, reads);
+        } else {
+            // sort by group and name (incurs a shuffle)
+            JavaPairRDD<String, GATKRead> keyReadPairs = reads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(read), read));
+            JavaPairRDD<String, Iterable<GATKRead>> keyedReadsWithoutQual = keyReadPairs.groupByKey(numReducers);
+            JavaPairRDD<String,Tuple2<Iterable<GATKRead>, List<byte[]> >> joinRecord =keyedReadsWithoutQual.join(nameAndqula);
+
+            keyedReads = joinRecord.mapValues((line) ->{
+                for(GATKRead read : line._1()) {
+
+                    if (read.getBaseQuality(0) == 16) {
+                        byte [] firstQual = line._2().get(0);
+                        int qualLength = firstQual.length;
+                        if (read.getLength() == qualLength) {
+                            read.setBaseQualities(firstQual);
+                        } else {
+                            int head = 0;
+                            int tail= 0;
+                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
+                                head = read.getCigarElement(0).getLength();
+                            }
+                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
+                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
+                            }
+                            byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
+
+                        }
+
+                    }else{
+                        byte [] firstQual = line._2().get(1);
+                        int qualLength = firstQual.length;
+                        if (read.getLength() == qualLength) {
+                            read.setBaseQualities(firstQual);
+                        } else {
+                            int head = 0;
+                            int tail= 0;
+                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
+                                head = read.getCigarElement(0).getLength();
+                            }
+                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
+                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
+                            }
+                            byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
+
+                        }
+
+
+                    }
+                }
+
+
+                return line._1();
+
+            });
+        }
         JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
             List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
             // Write each read out as a pair with only the first slot filled
