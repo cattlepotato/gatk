@@ -120,14 +120,19 @@ public class MarkDuplicatesSparkUtils {
                                 tail = read.getCigarElement(read.numCigarElements()-1).getLength();
                             }
                             byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
+                            if(subFirstQual.length ==read.getLength()){
+                                read.setBaseQualities(subFirstQual);
+                            }else {
+                                System.out.println("something wrong");
+                            }
 
                         }
 
                     }else{
-                        byte [] firstQual = line._2().get(1);
-                        int qualLength = firstQual.length;
+                        byte [] secondQual = line._2().get(1);
+                        int qualLength = secondQual.length;
                         if (read.getLength() == qualLength) {
-                            read.setBaseQualities(firstQual);
+                            read.setBaseQualities(secondQual);
                         } else {
                             int head = 0;
                             int tail= 0;
@@ -137,8 +142,12 @@ public class MarkDuplicatesSparkUtils {
                             if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
                                 tail = read.getCigarElement(read.numCigarElements()-1).getLength();
                             }
-                            byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
-
+                            byte [] subSecondQual = Arrays.copyOfRange(secondQual,head,qualLength-tail);
+                            if(subSecondQual.length ==read.getLength()){
+                                read.setBaseQualities(subSecondQual);
+                            }else {
+                                System.out.println("something wrong");
+                            }
                         }
 
 
