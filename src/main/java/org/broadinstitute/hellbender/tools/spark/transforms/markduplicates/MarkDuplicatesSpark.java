@@ -48,6 +48,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Argument(shortName = "DS", fullName = "DUPLICATE_SCORING_STRATEGY", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
+    @Argument(shortName = "NQ", fullName = "NAME_QUAL", doc = "A file contain name and qulities.",optional = false)
+    public String nameANDqual;
+
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
@@ -84,7 +87,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         
 //        JavaRDD<String> qual = ctx.textFile("/home/jryoung/documents/gatk_beta4_5/gatk_beta4_5/NA12878/testqual");
-        JavaRDD<String> qual = ctx.textFile("hdfs:///user/liucheng/NA12878/NA12878_500w_merge_nameQual.fastq");
+//        JavaRDD<String> qual = ctx.textFile("hdfs:///user/liucheng/NA12878/NA12878_500w_merge_nameQual.fastq");
+        JavaRDD<String> qual = ctx.textFile(nameANDqual);
         JavaPairRDD<String,List<byte[]>>  nameAndQual = qual.mapToPair(line->{
 //            String [] a = line.split(",");
             String [] a = line.split("\\|");
