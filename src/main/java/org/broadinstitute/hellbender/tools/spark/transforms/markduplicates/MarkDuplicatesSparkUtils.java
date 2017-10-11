@@ -122,6 +122,7 @@ public class MarkDuplicatesSparkUtils {
                             byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
                             if(subFirstQual.length ==read.getLength()){
                                 read.setBaseQualities(subFirstQual);
+                                System.out.println("supplementary\n");
                             }else {
                                 System.out.println("something wrong");
                             }
@@ -145,6 +146,7 @@ public class MarkDuplicatesSparkUtils {
                             byte [] subSecondQual = Arrays.copyOfRange(secondQual,head,qualLength-tail);
                             if(subSecondQual.length ==read.getLength()){
                                 read.setBaseQualities(subSecondQual);
+                                System.out.println("supplementary\n");
                             }else {
                                 System.out.println("something wrong");
                             }
@@ -291,6 +293,7 @@ public class MarkDuplicatesSparkUtils {
             for (final PairedEnds pair : Iterables.skip(scored, 1)) {
                 pair.first().setIsDuplicate(true);
                 pair.second().setIsDuplicate(true);
+                System.out.println("get a duplicates"+pair.first().getName());
             }
 
             // Now, add location information to the paired ends
