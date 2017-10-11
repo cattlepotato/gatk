@@ -83,11 +83,11 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         
-//        JavaRDD<String> qual = ctx.textFile("/home/jryoung/documents/cuda_mem_testdata/chr3_100_100_nameAndqual");
+//        JavaRDD<String> qual = ctx.textFile("/home/jryoung/documents/gatk_beta4_5/gatk_beta4_5/NA12878/testqual");
         JavaRDD<String> qual = ctx.textFile("hdfs:///user/liucheng/NA12878/NA12878_500w_merge_nameQual.fastq");
         JavaPairRDD<String,List<byte[]>>  nameAndQual = qual.mapToPair(line->{
 //            String [] a = line.split(",");
-            String [] a = line.split("|");
+            String [] a = line.split("\\|");
             List<byte[]> baseQual = new ArrayList<>(2);
             for(int k = 1;k<=2;k++){
                 byte[] realqual  = a[k].getBytes();

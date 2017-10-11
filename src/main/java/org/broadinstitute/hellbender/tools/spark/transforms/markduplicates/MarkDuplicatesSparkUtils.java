@@ -104,56 +104,61 @@ public class MarkDuplicatesSparkUtils {
 
             keyedReads = joinRecord.mapValues((line) ->{
                 for(GATKRead read : line._1()) {
-
-                    if (read.getBaseQuality(0) == 16) {
-                        byte [] firstQual = line._2().get(0);
-                        int qualLength = firstQual.length;
-                        if (read.getLength() == qualLength) {
-                            read.setBaseQualities(firstQual);
-                        } else {
-                            int head = 0;
-                            int tail= 0;
-                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
-                                head = read.getCigarElement(0).getLength();
-                            }
-                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
-                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
-                            }
-                            byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
-                            if(subFirstQual.length ==read.getLength()){
-                                read.setBaseQualities(subFirstQual);
-                                System.out.println("supplementary\n");
-                            }else {
-                                System.out.println("something wrong");
-                            }
-
-                        }
-
-                    }else{
-                        byte [] secondQual = line._2().get(1);
-                        int qualLength = secondQual.length;
-                        if (read.getLength() == qualLength) {
-                            read.setBaseQualities(secondQual);
-                        } else {
-                            int head = 0;
-                            int tail= 0;
-                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
-                                head = read.getCigarElement(0).getLength();
-                            }
-                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
-                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
-                            }
-                            byte [] subSecondQual = Arrays.copyOfRange(secondQual,head,qualLength-tail);
-                            if(subSecondQual.length ==read.getLength()){
-                                read.setBaseQualities(subSecondQual);
-                                System.out.println("supplementary\n");
-                            }else {
-                                System.out.println("something wrong");
-                            }
-                        }
-
-
+                    if(read.isFirstOfPair()){
+                        read.setBaseQualities(line._2().get(0));
+                    }else {
+                        read.setBaseQualities(line._2().get(1));
                     }
+
+//                    if (read.getBaseQuality(0) == 16) {
+//                        byte [] firstQual = line._2().get(0);
+//                        int qualLength = firstQual.length;
+//                        if (read.getLength() == qualLength) {
+//                            read.setBaseQualities(firstQual);
+//                        } else {
+//                            int head = 0;
+//                            int tail= 0;
+//                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
+//                                head = read.getCigarElement(0).getLength();
+//                            }
+//                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
+//                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
+//                            }
+//                            byte [] subFirstQual = Arrays.copyOfRange(firstQual,head,qualLength-tail);
+//                            if(subFirstQual.length ==read.getLength()){
+//                                read.setBaseQualities(subFirstQual);
+//                                System.out.println("supplementary\n");
+//                            }else {
+//                                System.out.println("something wrong");
+//                            }
+//
+//                        }
+//
+//                    }else{
+//                        byte [] secondQual = line._2().get(1);
+//                        int qualLength = secondQual.length;
+//                        if (read.getLength() == qualLength) {
+//                            read.setBaseQualities(secondQual);
+//                        } else {
+//                            int head = 0;
+//                            int tail= 0;
+//                            if(read.getCigarElement(0).getOperator() == CigarOperator.H) {
+//                                head = read.getCigarElement(0).getLength();
+//                            }
+//                            if(read.getCigarElement(read.numCigarElements()-1).getOperator() == CigarOperator.H){
+//                                tail = read.getCigarElement(read.numCigarElements()-1).getLength();
+//                            }
+//                            byte [] subSecondQual = Arrays.copyOfRange(secondQual,head,qualLength-tail);
+//                            if(subSecondQual.length ==read.getLength()){
+//                                read.setBaseQualities(subSecondQual);
+//                                System.out.println("supplementary\n");
+//                            }else {
+//                                System.out.println("something wrong");
+//                            }
+//                        }
+//
+//
+//                    }
                 }
 
 
