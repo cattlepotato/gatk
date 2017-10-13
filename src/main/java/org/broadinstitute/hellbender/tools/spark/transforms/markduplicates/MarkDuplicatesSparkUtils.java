@@ -105,9 +105,18 @@ public class MarkDuplicatesSparkUtils {
             keyedReads = joinRecord.mapValues((line) ->{
                 for(GATKRead read : line._1()) {
                     if(read.isFirstOfPair()){
-                        read.setBaseQualities(line._2().get(0));
+                        if(read.isReverseStrand()){
+                            read.setBaseQualities(reverseQuality(line._2().get(0)));
+                        }else {
+                            read.setBaseQualities(line._2().get(0));
+                        }
                     }else {
-                        read.setBaseQualities(line._2().get(1));
+                        if(read.isReverseStrand()){
+                            read.setBaseQualities(reverseQuality(line._2().get(1)));
+                        }else {
+                            read.setBaseQualities(line._2().get(1));
+                        }
+                        
                     }
 
 //                    if (read.getBaseQuality(0) == 16) {
@@ -195,6 +204,17 @@ public class MarkDuplicatesSparkUtils {
         }).groupByKey(numReducers);
 
         return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
+    }
+    
+    static byte[] reverseQuality(byte[] quality){
+        int size = quality.length;
+        byte tmp;
+        for (int i=0, mid=size>>1, j=size-1; i<mid; i++, j--){
+            tmp = quality[i];
+            quality[i] = quality[j];
+            quality[j] = tmp;
+        }
+        return quality;
     }
 
     static JavaPairRDD<String, Iterable<GATKRead>> spanReadsByKey(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
