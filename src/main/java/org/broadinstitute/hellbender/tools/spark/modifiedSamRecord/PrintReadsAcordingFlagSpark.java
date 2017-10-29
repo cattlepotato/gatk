@@ -59,6 +59,7 @@ public final class PrintReadsAcordingFlagSpark extends GATKSparkTool {
                 return true;
             return false;
         });
+        System.out.println("mult read\n"+filtedMultiReads.count());
 //        JavaRDD<String> key = filtedMultiReads.map(read->read._1());
 //
 //        key.saveAsTextFile(output);
