@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.modifiedSamRecord;
 
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -48,7 +49,7 @@ public final class PrintReadsAcordingFlagSpark extends GATKSparkTool {
         JavaRDD<GATKRead> reads = getReads();
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !ReadUtils.isNonPrimary(v1));
         JavaPairRDD<String, GATKRead> keyReadPairs = primaryReads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(read), read));
-        JavaPairRDD<String, Iterable<GATKRead>> keyedReads = keyReadPairs.groupByKey(numReducers);
+        JavaPairRDD<String, Iterable<GATKRead>> keyedReads = keyReadPairs.groupByKey();
         JavaPairRDD<String, Iterable<GATKRead>> filtedMultiReads =  keyedReads.filter(keyedRead->{
             int i =0;
             for (GATKRead read : keyedRead._2()){
@@ -58,14 +59,21 @@ public final class PrintReadsAcordingFlagSpark extends GATKSparkTool {
                 return true;
             return false;
         });
-        JavaRDD<String> key = filtedMultiReads.map(read->read._1());
+//        JavaRDD<String> key = filtedMultiReads.map(read->read._1());
+//
+//        key.saveAsTextFile(output);
+        JavaRDD<GATKRead> finalRead = filtedMultiReads.flatMap(keyRead->{
+            List<GATKRead> out = Lists.newArrayList();
+            for (GATKRead read : keyRead._2()){
+                out.add(read);
+            }
+            return out.iterator();
+        });
 
-        key.saveAsTextFile(output);
 
 
 
 
-
-//        writeReads(ctx,output,);
+        writeReads(ctx,output,finalRead);
     }
 }
